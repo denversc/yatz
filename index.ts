@@ -306,11 +306,16 @@ function getLoopColor(i: number, total: number, startHex: string, midHex: string
 }
 
 async function safePrompt(rl: ReadlineInterface, message: string): Promise<string> {
+  const onClose = () => {
+    console.error("\nERROR: end of input reached unexpectedly");
+    process.exit(1);
+  };
+
+  rl.addListener("close", onClose);
   try {
     return await rl.question(message);
-  } catch (e: unknown) {
-    console.error("\nError reading input:", e);
-    process.exit(1);
+  } finally {
+    rl.removeListener("close", onClose);
   }
 }
 
