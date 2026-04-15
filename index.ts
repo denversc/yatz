@@ -1,4 +1,4 @@
-import { INITIAL_STATE, reducer, calculateScore } from "./src/reducer";
+import { INITIAL_STATE, reducer, calculateScore, getTotalScore, getUpperScore, getBonus } from "./src/reducer";
 import { getAIAction } from "./src/ai";
 import { parseAndHandleArgs } from "./src/args";
 import { theme } from "./src/theme";
@@ -19,7 +19,7 @@ async function printGameState(state: GameState) {
   console.log(`\n${theme.ui.header("=== YAHTZEE ===")}`);
   state.players.forEach((p, i) => {
     const isCurrent = i === state.currentPlayerIndex;
-    const total = Object.values(p.scorecard).reduce((a, b) => (a || 0) + (b || 0), 0);
+    const total = getTotalScore(p.scorecard);
     const line = `${isCurrent ? "> " : "  "}${p.name}${p.isAI ? " (AI)" : ""}: ${total} pts`;
     console.log(isCurrent ? theme.ui.current(line) : theme.ui.fg(line));
   });
@@ -63,14 +63,20 @@ async function printGameState(state: GameState) {
     };
 
     const upperSumsDisplay = state.players.map(p => {
-      const sum = leftCategories.reduce((acc, cat) => acc + (p.scorecard[cat] || 0), 0);
+      const sum = getUpperScore(p.scorecard);
       const display = theme.score.sum(sum.toString());
       return display + " ".repeat(playerColumnWidth - sum.toString().length);
     }).join("");
 
+    const bonusDisplay = state.players.map(p => {
+      const bonus = getBonus(p.scorecard);
+      const display = theme.score.sum(bonus.toString());
+      return display + " ".repeat(playerColumnWidth - bonus.toString().length);
+    }).join("");
+
     console.log(theme.ui.border(`┌─${"─".repeat(leftWidth)}─┬─${"─".repeat(rightWidth)}─┐`));
 
-    const maxLength = Math.max(leftCategories.length + 1, rightCategories.length);
+    const maxLength = Math.max(leftCategories.length + 2, rightCategories.length);
     for (let i = 0; i < maxLength; i++) {
       let line = theme.ui.border("│ ");
 
@@ -81,6 +87,8 @@ async function printGameState(state: GameState) {
         line += `${theme.score.label(leftCat.padEnd(7))}: ${display}`;
       } else if (i === leftCategories.length) {
         line += `${theme.score.label("sum".padEnd(7))}: ${upperSumsDisplay}`;
+      } else if (i === leftCategories.length + 1) {
+        line += `${theme.score.label("bonus".padEnd(7))}: ${bonusDisplay}`;
       } else {
         line += " ".repeat(leftWidth);
       }
@@ -105,11 +113,11 @@ async function printGameState(state: GameState) {
   if (state.phase === "GAME_OVER") {
     console.log(`\n${theme.ui.header("=== GAME OVER ===")}`);
     const winner = [...state.players].sort((a, b) => {
-      const scoreA = Object.values(a.scorecard).reduce((s, v) => (s || 0) + (v || 0), 0);
-      const scoreB = Object.values(b.scorecard).reduce((s, v) => (s || 0) + (v || 0), 0);
-      return (scoreB || 0) - (scoreA || 0);
+      const scoreA = getTotalScore(a.scorecard);
+      const scoreB = getTotalScore(b.scorecard);
+      return scoreB - scoreA;
     })[0];
-    const winScore = Object.values(winner.scorecard).reduce((a, b) => (a || 0) + (b || 0), 0);
+    const winScore = getTotalScore(winner.scorecard);
     console.log(theme.ui.current(`Winner: ${winner.name} with ${winScore} pts!`));
   }
 }

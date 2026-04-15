@@ -27,6 +27,38 @@ describe("calculateScore", () => {
   });
 });
 
+describe("bonus calculation", () => {
+  const INITIAL_SCORECARD = {
+    ones: null, twos: null, threes: null, fours: null, fives: null, sixes: null,
+    threeOfAKind: null, fourOfAKind: null, fullHouse: null,
+    smallStraight: null, largeStraight: null, yahtzee: null, chance: null,
+  };
+  const { getUpperScore, getBonus, getTotalScore } = require("./reducer");
+
+  test("getUpperScore", () => {
+    const scorecard = { ...INITIAL_SCORECARD, ones: 3, twos: 6, threes: 9 };
+    expect(getUpperScore(scorecard)).toBe(18);
+  });
+
+  test("getBonus - not eligible", () => {
+    const scorecard = { ...INITIAL_SCORECARD, ones: 3, twos: 6, threes: 9, fours: 12, fives: 15, sixes: 17 }; // sum = 62
+    expect(getBonus(scorecard)).toBe(0);
+    expect(getTotalScore(scorecard)).toBe(62);
+  });
+
+  test("getBonus - eligible exactly 63", () => {
+    const scorecard = { ...INITIAL_SCORECARD, ones: 3, twos: 6, threes: 9, fours: 12, fives: 15, sixes: 18 }; // sum = 63
+    expect(getBonus(scorecard)).toBe(35);
+    expect(getTotalScore(scorecard)).toBe(63 + 35);
+  });
+
+  test("getBonus - eligible over 63", () => {
+    const scorecard = { ...INITIAL_SCORECARD, ones: 5, twos: 10, threes: 15, fours: 20, fives: 25, sixes: 30 }; // sum = 105
+    expect(getBonus(scorecard)).toBe(35);
+    expect(getTotalScore(scorecard)).toBe(105 + 35);
+  });
+});
+
 describe("reducer", () => {
   test("START_GAME", () => {
     const state = reducer(INITIAL_STATE, {

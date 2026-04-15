@@ -51,6 +51,20 @@ export function calculateScore(dice: number[], category: Category): number {
   }
 }
 
+export function getUpperScore(scorecard: Scorecard): number {
+  const upperCategories: Category[] = ["ones", "twos", "threes", "fours", "fives", "sixes"];
+  return upperCategories.reduce((acc, cat) => acc + (scorecard[cat] || 0), 0);
+}
+
+export function getBonus(scorecard: Scorecard): number {
+  return getUpperScore(scorecard) >= 63 ? 35 : 0;
+}
+
+export function getTotalScore(scorecard: Scorecard): number {
+  const baseScore = (Object.values(scorecard) as (number | null)[]).reduce((acc, v) => acc + (v || 0), 0);
+  return baseScore + getBonus(scorecard);
+}
+
 export function reducer(state: GameState, action: Action): GameState {
   switch (action.type) {
     case "START_GAME":
