@@ -417,7 +417,9 @@ async function main() {
       while (state.players[state.currentPlayerIndex] === currentPlayer && state.phase !== "GAME_OVER") {
         const turnNum = Object.values(currentPlayer.scorecard).filter(v => v !== null).length + 1;
         const rollNum = 3 - state.rollsLeft;
-        console.log(`${theme.ui.fg(currentPlayer.name)}, Turn ${turnNum}, Roll ${rollNum}:`);
+        if (rollNum === 1) {
+          console.log(`${theme.ui.fg(currentPlayer.name)}, Turn ${turnNum}:`);
+        }
 
         // Draw visual dice
         const diceRows = ["", "", "", "", ""];
