@@ -218,19 +218,21 @@ async function printGameState(state: GameState, theme: Theme) {
 
     console.log(theme.ui.border(`┌─${"─".repeat(leftWidth)}─┬─${"─".repeat(rightWidth)}─┐`));
 
-    const playerHeader = state.players.map((p, i) => {
-      const abbr = p.name.includes(" ")
-        ? p.name.split(/\s+/).map(w => w.slice(0, 2)).join("")
-        : p.name.slice(0, 3);
-      const isCurrent = i === state.currentPlayerIndex && state.phase !== "GAME_OVER";
-      const display = abbr.padEnd(playerColumnWidth);
-      return isCurrent ? theme.ui.current(display) : theme.ui.dim(display);
-    }).join("");
+    if (state.players.length > 1) {
+      const playerHeader = state.players.map((p, i) => {
+        const abbr = p.name.includes(" ")
+          ? p.name.split(/\s+/).map(w => w.slice(0, 2)).join("")
+          : p.name.slice(0, 3);
+        const isCurrent = i === state.currentPlayerIndex && state.phase !== "GAME_OVER";
+        const display = abbr.padEnd(playerColumnWidth);
+        return isCurrent ? theme.ui.current(display) : theme.ui.dim(display);
+      }).join("");
 
-    const leftHeader = " ".repeat(9) + "  " + playerHeader;
-    const rightHeader = " ".repeat(14) + "  " + playerHeader;
-    console.log(theme.ui.border(`│ ${leftHeader} │ ${rightHeader} │`));
-    console.log(theme.ui.border(`├─${"─".repeat(leftWidth)}─┼─${"─".repeat(rightWidth)}─┤`));
+      const leftHeader = " ".repeat(9) + "  " + playerHeader;
+      const rightHeader = " ".repeat(14) + "  " + playerHeader;
+      console.log(theme.ui.border(`│ ${leftHeader} │ ${rightHeader} │`));
+      console.log(theme.ui.border(`├─${"─".repeat(leftWidth)}─┼─${"─".repeat(rightWidth)}─┤`));
+    }
 
     const maxLength = Math.max(leftRows.length, rightRows.length);
     for (let i = 0; i < maxLength; i++) {
