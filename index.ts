@@ -312,6 +312,21 @@ function safePrompt(message: string): string {
   return result;
 }
 
+function printRollMessage(state: GameState, playerName: string, theme: Theme) {
+  const keptIndices = state.kept.map((k, i) => k ? i : -1).filter(i => i !== -1);
+  const numKept = keptIndices.length;
+  const numRolled = 5 - numKept;
+
+  if (numKept === 0) {
+    console.log(`${playerName} re-rolled ${theme.ui.italic(theme.ui.bold(`all of the dice`))}`);
+  } else {
+    const keptValues = keptIndices.map(i => state.dice[i]);
+    const rolledDiceWord = numRolled === 1 ? "die" : "dice";
+    const keptDiceWord = numKept === 1 ? "die" : "dice";
+    console.log(`${playerName} re-rolled ${theme.ui.italic(theme.ui.bold(`${numRolled} ${rolledDiceWord}`))}, kept ${theme.ui.italic(theme.ui.bold(`${numKept} ${keptDiceWord}`))}: [${theme.ui.italic(theme.ui.bold(keptValues.join(" ")))}]`);
+  }
+}
+
 async function main() {
   const theme = parseAndHandleArgs();
   const ansis = new Ansis(theme.level);
@@ -428,6 +443,8 @@ async function main() {
           const points = calculateScore(state.dice, action.category);
           const rollsUsed = 3 - state.rollsLeft;
           console.log(`${currentPlayer.name} scored ${theme.ui.italic(theme.ui.bold(`${points} points`))} in ${CATEGORY_ICONS[action.category]} ${theme.ui.italic(theme.ui.bold(CATEGORY_NAMES[action.category]))} after ${rollsUsed} roll${rollsUsed > 1 ? "s" : ""}`);
+        } else if (action.type === "ROLL_DICE") {
+          printRollMessage(state, currentPlayer.name, theme);
         }
 
         state = reducer(state, action);
@@ -495,9 +512,11 @@ async function main() {
 
         if (input === "a" && state.phase === "ROLLING") {
           state = reducer(state, { type: "CLEAR_KEEPERS" });
+          printRollMessage(state, currentPlayer.name, theme);
           state = reducer(state, { type: "ROLL_DICE" });
           break;
         } else if ((input === "r" || input === "") && state.phase === "ROLLING") {
+          printRollMessage(state, currentPlayer.name, theme);
           state = reducer(state, { type: "ROLL_DICE" });
           break;
         } else if (rawInput.startsWith("K") && state.phase === "ROLLING") {
@@ -532,6 +551,7 @@ async function main() {
             state = reducer(state, { type: "TOGGLE_KEEPER", index });
           }
 
+          printRollMessage(state, currentPlayer.name, theme);
           state = reducer(state, { type: "ROLL_DICE" });
           break;
         } else if (input.startsWith("k") && state.phase === "ROLLING") {
@@ -563,6 +583,7 @@ async function main() {
             state = reducer(state, { type: "TOGGLE_KEEPER", index: mapping[char] });
           }
 
+          printRollMessage(state, currentPlayer.name, theme);
           state = reducer(state, { type: "ROLL_DICE" });
           break;
         } else if (input.startsWith("d") && state.phase === "ROLLING") {
@@ -599,6 +620,7 @@ async function main() {
             }
           }
 
+          printRollMessage(state, currentPlayer.name, theme);
           state = reducer(state, { type: "ROLL_DICE" });
           break;
         } else if (input.startsWith("s") || (state.phase === "SCORING" && input !== "")) {
