@@ -127,6 +127,7 @@ async function main() {
             console.log("  r, ENTER: roll (keeps current keepers)");
             console.log("  k[1-5]  : keep specified dice and roll (e.g. k125)");
             console.log("  k[a-g]  : keep using home row (a=1, s=2, d=3, f=4, g=5)");
+            console.log("  d[1-5]  : discard specified dice and roll (keeps others)");
             console.log("  s[cat]  : score in category (e.g. sfh, s 1)");
             console.log("            Shortcuts: 1-6, 3k, 4k, fh, ss, ls, y, c");
           } else {
@@ -172,6 +173,42 @@ async function main() {
 
           for (const char of content) {
             state = reducer(state, { type: "TOGGLE_KEEPER", index: mapping[char] });
+          }
+
+          state = reducer(state, { type: "ROLL_DICE" });
+          break;
+        } else if (input.startsWith("d") && state.phase === "ROLLING") {
+          const content = input.slice(1).replace(/\s/g, "");
+          const mapping: Record<string, number> = {
+            '1': 0, '2': 1, '3': 2, '4': 3, '5': 4,
+            'a': 0, 's': 1, 'd': 2, 'f': 3, 'g': 4
+          };
+
+          if (content.length === 0) {
+            console.log("Error: Please specify dice to discard (e.g., d123 or dasd).");
+            continue;
+          }
+
+          let hasInvalidChar = false;
+          const discardIndices = new Set<number>();
+          for (const char of content) {
+            if (!(char in mapping)) {
+              hasInvalidChar = true;
+              break;
+            }
+            discardIndices.add(mapping[char]);
+          }
+
+          if (hasInvalidChar) {
+            console.log("Error: Invalid dice index. Use 1-5 or a,s,d,f,g.");
+            continue;
+          }
+
+          state = reducer(state, { type: "CLEAR_KEEPERS" });
+          for (let i = 0; i < 5; i++) {
+            if (!discardIndices.has(i)) {
+              state = reducer(state, { type: "TOGGLE_KEEPER", index: i });
+            }
           }
 
           state = reducer(state, { type: "ROLL_DICE" });
