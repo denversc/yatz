@@ -2,6 +2,22 @@ export type Category =
   | "ones" | "twos" | "threes" | "fours" | "fives" | "sixes"
   | "threeOfAKind" | "fourOfAKind" | "fullHouse" | "smallStraight" | "largeStraight" | "yahtzee" | "chance";
 
+export const CATEGORY_NAMES: Record<Category, string> = {
+  ones: "ones",
+  twos: "twos",
+  threes: "threes",
+  fours: "fours",
+  fives: "fives",
+  sixes: "sixes",
+  threeOfAKind: "3-of-a-kind",
+  fourOfAKind: "4-of-a-kind",
+  fullHouse: "full house",
+  smallStraight: "sm straight",
+  largeStraight: "lg straight",
+  yahtzee: "yahtzee",
+  chance: "chance",
+};
+
 export type Scorecard = Record<Category, number | null>;
 
 export interface Player {

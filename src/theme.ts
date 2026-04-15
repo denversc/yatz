@@ -10,6 +10,7 @@ export interface Theme {
     separator: (s: string) => string;
     border: (s: string) => string;
     bold: (s: string) => string;
+    italic: (s: string) => string;
     dim: (s: string) => string;
     underline: (s: string) => string;
     error: (s: string) => string;
@@ -61,6 +62,7 @@ export function createTheme(level?: number): Theme {
       separator: a.hex(COLORS.dark3),
       border: a.hex(COLORS.dark3),
       bold: (s: string) => a.bold(s),
+      italic: (s: string) => a.italic(s),
       dim: (s: string) => a.dim(s),
       underline: (s: string) => a.underline(s),
       error: a.hex(COLORS.red).bold,
