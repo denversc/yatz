@@ -14,8 +14,8 @@ export interface Theme {
     underline: (s: string) => string;
     error: (s: string) => string;
     gradient: {
-      start: string;
-      end: string;
+      header: { start: string; end: string };
+      border: { start: string; end: string };
     };
   };
   dice: {
@@ -44,6 +44,8 @@ const COLORS = {
   red: "#f7768e",
   comment: "#565f89",
   dark3: "#414868",
+  darkBlue: "#3d59a1",
+  darkGreen: "#41a6b5",
 };
 
 export function createTheme(level?: number): Theme {
@@ -63,8 +65,14 @@ export function createTheme(level?: number): Theme {
       underline: (s: string) => a.underline(s),
       error: a.hex(COLORS.red).bold,
       gradient: {
-        start: COLORS.magenta,
-        end: COLORS.cyan,
+        header: {
+          start: COLORS.magenta,
+          end: COLORS.cyan,
+        },
+        border: {
+          start: COLORS.darkGreen,
+          end: COLORS.darkBlue,
+        },
       },
     },
     dice: {

@@ -286,12 +286,56 @@ function getGradientText(text: string, startHex: string, endHex: string): string
   }).join("");
 }
 
+function getLoopColor(i: number, total: number, startHex: string, midHex: string): string {
+  const ratio = i / total;
+  const t = ratio < 0.5 ? ratio * 2 : (1 - ratio) * 2;
+  
+  const startR = parseInt(startHex.slice(1, 3), 16);
+  const startG = parseInt(startHex.slice(3, 5), 16);
+  const startB = parseInt(startHex.slice(5, 7), 16);
+
+  const endR = parseInt(midHex.slice(1, 3), 16);
+  const endG = parseInt(midHex.slice(3, 5), 16);
+  const endB = parseInt(midHex.slice(5, 7), 16);
+
+  const r = Math.round(startR + (endR - startR) * t);
+  const g = Math.round(startG + (endG - startG) * t);
+  const b = Math.round(startB + (endB - startB) * t);
+  
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
 async function main() {
   parseAndHandleArgs();
 
   // Setup players
-  const gradientText = getGradientText(" WELCOME TO YAHTZEE ", theme.ui.gradient.start, theme.ui.gradient.end);
-  console.log(`⚀ ⚁ ⚂ ${gradientText} ⚃ ⚄ ⚅`);
+  const welcomeText = " WELCOME TO YAHTZEE ";
+  const gradientText = getGradientText(welcomeText, theme.ui.gradient.header.start, theme.ui.gradient.header.end);
+  const width = welcomeText.length;
+  const L = 2 * width + 6;
+  const start = theme.ui.gradient.border.start;
+  const end = theme.ui.gradient.border.end;
+
+  // Top row
+  let top = ansis.hex(getLoopColor(0, L, start, end))("▛");
+  for (let i = 0; i < width; i++) {
+    top += ansis.hex(getLoopColor(i + 1, L, start, end))("▀");
+  }
+  top += ansis.hex(getLoopColor(width + 1, L, start, end))("▜");
+  console.log(top);
+
+  // Middle row
+  const left = ansis.hex(getLoopColor(2 * width + 5, L, start, end))("▌");
+  const right = ansis.hex(getLoopColor(width + 2, L, start, end))("▐");
+  console.log(left + gradientText + right);
+
+  // Bottom row
+  let bot = ansis.hex(getLoopColor(2 * width + 4, L, start, end))("▙");
+  for (let i = 0; i < width; i++) {
+    bot += ansis.hex(getLoopColor(2 * width + 3 - i, L, start, end))("▄");
+  }
+  bot += ansis.hex(getLoopColor(width + 3, L, start, end))("▟");
+  console.log(bot);
+
   const playerNames: { name: string; isAI: boolean }[] = [];
 
   while (true) {
