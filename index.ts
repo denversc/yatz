@@ -17,21 +17,42 @@ const DICE_FACES = {
 
 async function printGameState(state: GameState) {
   if (state.phase === "GAME_OVER") {
-    console.log(`\n${theme.ui.header("≋≋≋ GAME OVER ≋≋≋")}`);
+    const winner = [...state.players].sort((a, b) => {
+      const scoreA = getTotalScore(a.scorecard);
+      const scoreB = getTotalScore(b.scorecard);
+      return scoreB - scoreA;
+    })[0];
+    const winScore = getTotalScore(winner.scorecard);
+    const info = theme.ui.dim(`${winner.name} wins!`);
+    console.log(`\n${theme.ui.header(`≋≋≋≋≋≋ GAME OVER ❯ `)}${theme.ui.header(info)}${theme.ui.header(` ≋≋≋≋≋≋`)}`);
     if (state.players.length > 1) {
+      console.log("\nFinal Scores:");
+      const maxNameLen = Math.max(...state.players.map(p => p.name.length));
       state.players.forEach(p => {
         const total = getTotalScore(p.scorecard);
-        console.log(theme.ui.fg(`  ${p.name}: ${total} pts`));
+        const paddedName = p.name.padEnd(maxNameLen);
+        const paddedScore = total.toString().padStart(3);
+        console.log(theme.ui.fg(`  ${paddedName}: ${paddedScore}`));
       });
     }
   } else {
-    console.log(`\n${theme.ui.header("⣿⣿⣿ YAHTZEE ⣿⣿⣿")}`);
-    state.players.forEach((p, i) => {
-      const isCurrent = i === state.currentPlayerIndex;
-      const total = getTotalScore(p.scorecard);
-      const line = `${isCurrent ? "> " : "  "}${p.name}: ${total} pts`;
-      console.log(isCurrent ? theme.ui.current(line) : theme.ui.fg(line));
-    });
+    const currentPlayer = state.players[state.currentPlayerIndex];
+    const turn = Object.values(currentPlayer.scorecard).filter(v => v !== null).length + 1;
+    const roll = 3 - state.rollsLeft;
+    const info = theme.ui.dim(`${currentPlayer.name} ⋄ Turn ${turn} ⋄ Roll ${roll}`);
+    console.log(`\n${theme.ui.header(`⣿⣿⣿⣿⣿⣿ YAHTZEE ❯ `)}${theme.ui.header(info)}${theme.ui.header(` ⣿⣿⣿⣿⣿⣿`)}`);
+    if (state.players.length > 1) {
+      console.log("\nScores:");
+      const maxNameLen = Math.max(...state.players.map(p => p.name.length));
+      state.players.forEach((p, i) => {
+        const isCurrent = i === state.currentPlayerIndex;
+        const total = getTotalScore(p.scorecard);
+        const paddedName = p.name.padEnd(maxNameLen);
+        const paddedScore = total.toString().padStart(3);
+        const line = `${isCurrent ? "> " : "  "}${paddedName}: ${paddedScore}`;
+        console.log(isCurrent ? theme.ui.current(line) : theme.ui.fg(line));
+      });
+    }
   }
 
   const currentPlayer = state.players[state.currentPlayerIndex];
@@ -64,13 +85,15 @@ async function printGameState(state: GameState) {
       const potential = calculateScore(state.dice, cat);
       return state.players.map((p, i) => {
         const isCurrent = i === state.currentPlayerIndex;
+        const isGameOver = state.phase === "GAME_OVER";
         let display = "";
         let rawLength = 0;
 
         if (p.scorecard[cat] !== null) {
           display = theme.score.value(p.scorecard[cat]!.toString());
+          if (!isCurrent && !isGameOver) display = theme.ui.dim(display);
           rawLength = p.scorecard[cat]!.toString().length;
-        } else if (isCurrent && state.phase !== "GAME_OVER") {
+        } else if (isCurrent && !isGameOver) {
           if (p.isAI) {
             display = "";
             rawLength = 0;
@@ -80,6 +103,7 @@ async function printGameState(state: GameState) {
           }
         } else {
           display = theme.score.empty("·");
+          if (!isCurrent && !isGameOver) display = theme.ui.dim(display);
           rawLength = 1;
         }
         
@@ -87,15 +111,21 @@ async function printGameState(state: GameState) {
       }).join("");
     };
 
-    const upperSumsDisplay = state.players.map(p => {
+    const upperSumsDisplay = state.players.map((p, i) => {
+      const isCurrent = i === state.currentPlayerIndex;
+      const isGameOver = state.phase === "GAME_OVER";
       const sum = getUpperScore(p.scorecard);
-      const display = theme.score.sum(sum.toString());
+      let display = theme.score.sum(sum.toString());
+      if (!isCurrent && !isGameOver) display = theme.ui.dim(display);
       return display + " ".repeat(playerColumnWidth - sum.toString().length);
     }).join("");
 
-    const bonusDisplay = state.players.map(p => {
+    const bonusDisplay = state.players.map((p, i) => {
+      const isCurrent = i === state.currentPlayerIndex;
+      const isGameOver = state.phase === "GAME_OVER";
       const bonus = getBonus(p.scorecard);
-      const display = bonus > 0 ? theme.score.value(bonus.toString()) : theme.score.sum(bonus.toString());
+      let display = bonus > 0 ? theme.score.value(bonus.toString()) : theme.score.sum(bonus.toString());
+      if (!isCurrent && !isGameOver) display = theme.ui.dim(display);
       return display + " ".repeat(playerColumnWidth - bonus.toString().length);
     }).join("");
 
