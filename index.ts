@@ -3,7 +3,7 @@ import { getAIAction } from "./src/ai";
 import { parseAndHandleArgs } from "./src/args";
 import { theme } from "./src/theme";
 import type { Action, Category, GameState, Player } from "./src/types";
-import { CATEGORY_NAMES } from "./src/types";
+import { CATEGORY_NAMES, CATEGORY_ICONS } from "./src/types";
 import { Ansis } from "ansis";
 
 const ansis = new Ansis();
@@ -118,21 +118,21 @@ async function printGameState(state: GameState) {
   if (state.phase !== "START") {
     console.log("");
     const CATEGORY_LABELS: Record<string, string> = {
-      ones: `⚀ ${CATEGORY_NAMES.ones}`,
-      twos: `⚁ ${CATEGORY_NAMES.twos}`,
-      threes: `⚂ ${CATEGORY_NAMES.threes}`,
-      fours: `⚃ ${CATEGORY_NAMES.fours}`,
-      fives: `⚄ ${CATEGORY_NAMES.fives}`,
-      sixes: `⚅ ${CATEGORY_NAMES.sixes}`,
+      ones: `${CATEGORY_ICONS.ones} ${CATEGORY_NAMES.ones}`,
+      twos: `${CATEGORY_ICONS.twos} ${CATEGORY_NAMES.twos}`,
+      threes: `${CATEGORY_ICONS.threes} ${CATEGORY_NAMES.threes}`,
+      fours: `${CATEGORY_ICONS.fours} ${CATEGORY_NAMES.fours}`,
+      fives: `${CATEGORY_ICONS.fives} ${CATEGORY_NAMES.fives}`,
+      sixes: `${CATEGORY_ICONS.sixes} ${CATEGORY_NAMES.sixes}`,
       sum: "∑ sum",
       bonus: "✧ bonus",
-      threeOfAKind: `③ ${CATEGORY_NAMES.threeOfAKind}`,
-      fourOfAKind: `④ ${CATEGORY_NAMES.fourOfAKind}`,
-      fullHouse: `⌂ ${CATEGORY_NAMES.fullHouse}`,
-      smallStraight: `⇀ ${CATEGORY_NAMES.smallStraight}`,
-      largeStraight: `⇉ ${CATEGORY_NAMES.largeStraight}`,
-      yahtzee: `★ ${CATEGORY_NAMES.yahtzee}`,
-      chance: `❂ ${CATEGORY_NAMES.chance}`,
+      threeOfAKind: `${CATEGORY_ICONS.threeOfAKind} ${CATEGORY_NAMES.threeOfAKind}`,
+      fourOfAKind: `${CATEGORY_ICONS.fourOfAKind} ${CATEGORY_NAMES.fourOfAKind}`,
+      fullHouse: `${CATEGORY_ICONS.fullHouse} ${CATEGORY_NAMES.fullHouse}`,
+      smallStraight: `${CATEGORY_ICONS.smallStraight} ${CATEGORY_NAMES.smallStraight}`,
+      largeStraight: `${CATEGORY_ICONS.largeStraight} ${CATEGORY_NAMES.largeStraight}`,
+      yahtzee: `${CATEGORY_ICONS.yahtzee} ${CATEGORY_NAMES.yahtzee}`,
+      chance: `${CATEGORY_ICONS.chance} ${CATEGORY_NAMES.chance}`,
     };
 
     const playerColumnWidth = 5;
@@ -419,7 +419,7 @@ async function main() {
         if (action.type === "SCORE_CATEGORY") {
           const points = calculateScore(state.dice, action.category);
           const rollsUsed = 3 - state.rollsLeft;
-          console.log(`${currentPlayer.name} scored ${theme.ui.italic(theme.ui.bold(`${points} points`))} in ${theme.ui.italic(theme.ui.bold(CATEGORY_NAMES[action.category]))} after ${rollsUsed} roll${rollsUsed > 1 ? "s" : ""}`);
+          console.log(`${currentPlayer.name} scored ${theme.ui.italic(theme.ui.bold(`${points} points`))} in ${CATEGORY_ICONS[action.category]} ${theme.ui.italic(theme.ui.bold(CATEGORY_NAMES[action.category]))} after ${rollsUsed} roll${rollsUsed > 1 ? "s" : ""}`);
         }
 
         state = reducer(state, action);
@@ -627,7 +627,7 @@ async function main() {
 
           const points = calculateScore(state.dice, actualCategory);
           const rollsUsed = 3 - state.rollsLeft;
-          console.log(`${currentPlayer.name} scored ${theme.ui.italic(theme.ui.bold(`${points} points`))} in ${theme.ui.italic(theme.ui.bold(CATEGORY_NAMES[actualCategory]))} after ${rollsUsed} roll${rollsUsed > 1 ? "s" : ""}`);
+          console.log(`${currentPlayer.name} scored ${theme.ui.italic(theme.ui.bold(`${points} points`))} in ${CATEGORY_ICONS[actualCategory]} ${theme.ui.italic(theme.ui.bold(CATEGORY_NAMES[actualCategory]))} after ${rollsUsed} roll${rollsUsed > 1 ? "s" : ""}`);
 
           state = reducer(state, { type: "SCORE_CATEGORY", category: actualCategory });
           break;

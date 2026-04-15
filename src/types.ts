@@ -18,6 +18,22 @@ export const CATEGORY_NAMES: Record<Category, string> = {
   chance: "chance",
 };
 
+export const CATEGORY_ICONS: Record<Category, string> = {
+  ones: "⚀",
+  twos: "⚁",
+  threes: "⚂",
+  fours: "⚃",
+  fives: "⚄",
+  sixes: "⚅",
+  threeOfAKind: "③",
+  fourOfAKind: "④",
+  fullHouse: "⌂",
+  smallStraight: "⇀",
+  largeStraight: "⇉",
+  yahtzee: "★",
+  chance: "❂",
+};
+
 export type Scorecard = Record<Category, number | null>;
 
 export interface Player {
