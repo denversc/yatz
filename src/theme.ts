@@ -11,6 +11,7 @@ export interface Theme {
     border: (s: string) => string;
     bold: (s: string) => string;
     dim: (s: string) => string;
+    underline: (s: string) => string;
     error: (s: string) => string;
   };
   dice: {
@@ -55,6 +56,7 @@ export function createTheme(level?: number): Theme {
       border: a.hex(COLORS.dark3),
       bold: (s: string) => a.bold(s),
       dim: (s: string) => a.dim(s),
+      underline: (s: string) => a.underline(s),
       error: a.hex(COLORS.red).bold,
     },
     dice: {

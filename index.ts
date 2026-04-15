@@ -28,13 +28,13 @@ async function printGameState(state: GameState) {
     
     if (state.players.length > 1) {
       const maxNameLen = Math.max(...state.players.map(p => p.name.length));
-      const scoreLabelWidth = maxNameLen + 7;
+      const scoreLabelWidth = maxNameLen + 5;
       
       const scoresLines = state.players.map(p => {
         const total = getTotalScore(p.scorecard);
         const paddedName = p.name.padEnd(maxNameLen);
         const paddedScore = total.toString().padStart(3);
-        return { text: `  ${paddedName}: ${paddedScore}` };
+        return { text: `${paddedName}: ${paddedScore}` };
       });
 
       const rankedPlayers = [...state.players]
@@ -44,12 +44,19 @@ async function printGameState(state: GameState) {
       const rankingsLines = rankedPlayers.map(({ p, score }) => {
         const paddedName = p.name.padEnd(maxNameLen);
         const paddedScore = score.toString().padStart(3);
-        return { text: `  ${paddedName}: ${paddedScore}` };
+        return { text: `${paddedName}: ${paddedScore}` };
       });
 
-      console.log(`\n${"Final Scores:".padEnd(scoreLabelWidth + 4)}Final Rankings:`);
+      const scoresHeaderStr = "Final Scores";
+      const scoresHeaderPadding = Math.max(scoreLabelWidth + 4, scoresHeaderStr.length + 4) - scoresHeaderStr.length;
+      const scoresHeader = theme.ui.underline(scoresHeaderStr) + " ".repeat(scoresHeaderPadding);
+      const rankingsHeader = theme.ui.underline("Final Rankings");
+      console.log(`\n${scoresHeader}${rankingsHeader}`);
       for (let i = 0; i < scoresLines.length; i++) {
-        console.log(`${theme.ui.fg(scoresLines[i].text)}${" ".repeat(4)}${theme.ui.fg(rankingsLines[i].text)}`);
+        const sLine = scoresLines[i].text;
+        const rLine = rankingsLines[i].text;
+        const linePadding = Math.max(4, scoresHeaderStr.length + 4 - sLine.length);
+        console.log(`${theme.ui.fg(sLine)}${" ".repeat(linePadding)}${theme.ui.fg(rLine)}`);
       }
     }
   } else {
@@ -90,7 +97,9 @@ async function printGameState(state: GameState) {
         };
       });
 
-      console.log(`\n${"Scores:".padEnd(scoreLabelWidth + 4)}Rankings:`);
+      const scoresHeader = theme.ui.underline("Scores") + " ".repeat(scoreLabelWidth + 4 - "Scores".length);
+      const rankingsHeader = theme.ui.underline("Rankings");
+      console.log(`\n${scoresHeader}${rankingsHeader}`);
       for (let i = 0; i < scoresLines.length; i++) {
         const s = scoresLines[i];
         const r = rankingsLines[i];
@@ -190,9 +199,10 @@ async function printGameState(state: GameState) {
 
     const getStyledLabel = (key: string, width: number) => {
       const label = CATEGORY_LABELS[key] || key;
+      const isGameOver = state.phase === "GAME_OVER";
       const isAvailable = key !== "sum" && key !== "bonus" && currentPlayer.scorecard[key as Category] === null;
       if (!isAvailable) {
-        return (key === "sum" || key === "bonus")
+        return (key === "sum" || key === "bonus" || isGameOver)
           ? theme.score.label(label.padEnd(width))
           : theme.ui.dim(theme.score.label(label.padEnd(width)));
       }
