@@ -35,10 +35,28 @@ async function printGameState(state: GameState) {
   const currentPlayer = state.players[state.currentPlayerIndex];
   if (state.phase !== "START") {
     console.log("");
-    const playerColumnWidth = 8; // Increased for color padding safety
+    const CATEGORY_LABELS: Record<string, string> = {
+      ones: "⚀ ones",
+      twos: "⚁ twos",
+      threes: "⚂ threes",
+      fours: "⚃ fours",
+      fives: "⚄ fives",
+      sixes: "⚅ sixes",
+      sum: "∑ sum",
+      bonus: "✧ bonus",
+      threeOfAKind: "③ 3-of-a-kind",
+      fourOfAKind: "④ 4-of-a-kind",
+      fullHouse: "⌂ full house",
+      smallStraight: "⇀ sm straight",
+      largeStraight: "⇉ lg straight",
+      yahtzee: "★ yahtzee",
+      chance: "❂ chance",
+    };
+
+    const playerColumnWidth = 8;
     const totalScoreWidth = state.players.length * playerColumnWidth;
-    const leftWidth = 9 + totalScoreWidth;
-    const rightWidth = 16 + totalScoreWidth;
+    const leftWidth = 15 + totalScoreWidth;
+    const rightWidth = 17 + totalScoreWidth;
 
     const getScoreLine = (cat: Category) => {
       const potential = calculateScore(state.dice, cat);
@@ -102,13 +120,16 @@ async function printGameState(state: GameState) {
       const leftItem = leftRows[i];
       if (leftItem === null || i >= leftRows.length) {
         line += " ".repeat(leftWidth);
-      } else if (leftItem === "sum") {
-        line += `${theme.score.label("sum".padEnd(7))}: ${upperSumsDisplay}`;
-      } else if (leftItem === "bonus") {
-        line += `${theme.score.label("bonus".padEnd(7))}: ${bonusDisplay}`;
       } else {
-        const display = getScoreLine(leftItem);
-        line += `${theme.score.label(leftItem.padEnd(7))}: ${display}`;
+        const label = CATEGORY_LABELS[leftItem] || leftItem;
+        if (leftItem === "sum") {
+          line += `${theme.score.label(label.padEnd(13))}: ${upperSumsDisplay}`;
+        } else if (leftItem === "bonus") {
+          line += `${theme.score.label(label.padEnd(13))}: ${bonusDisplay}`;
+        } else {
+          const display = getScoreLine(leftItem as Category);
+          line += `${theme.score.label(label.padEnd(13))}: ${display}`;
+        }
       }
 
       line += theme.ui.border(" │ ");
@@ -118,8 +139,9 @@ async function printGameState(state: GameState) {
       if (rightItem === null || i >= rightRows.length) {
         line += " ".repeat(rightWidth);
       } else {
+        const label = CATEGORY_LABELS[rightItem] || rightItem;
         const display = getScoreLine(rightItem);
-        line += `${theme.score.label(rightItem.padEnd(14))}: ${display}`;
+        line += `${theme.score.label(label.padEnd(15))}: ${display}`;
       }
       line += theme.ui.border(" │");
       console.log(line);
