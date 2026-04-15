@@ -13,6 +13,10 @@ export interface Theme {
     dim: (s: string) => string;
     underline: (s: string) => string;
     error: (s: string) => string;
+    gradient: {
+      start: string;
+      end: string;
+    };
   };
   dice: {
     default: (s: string) => string;
@@ -58,6 +62,10 @@ export function createTheme(level?: number): Theme {
       dim: (s: string) => a.dim(s),
       underline: (s: string) => a.underline(s),
       error: a.hex(COLORS.red).bold,
+      gradient: {
+        start: COLORS.magenta,
+        end: COLORS.cyan,
+      },
     },
     dice: {
       default: a.hex(COLORS.cyan),

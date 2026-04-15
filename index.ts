@@ -3,6 +3,9 @@ import { getAIAction } from "./src/ai";
 import { parseAndHandleArgs } from "./src/args";
 import { theme } from "./src/theme";
 import type { Action, Category, GameState, Player } from "./src/types";
+import { Ansis } from "ansis";
+
+const ansis = new Ansis();
 
 let state = INITIAL_STATE;
 
@@ -264,11 +267,31 @@ async function printGameState(state: GameState) {
   }
 }
 
+function getGradientText(text: string, startHex: string, endHex: string): string {
+  const startR = parseInt(startHex.slice(1, 3), 16);
+  const startG = parseInt(startHex.slice(3, 5), 16);
+  const startB = parseInt(startHex.slice(5, 7), 16);
+
+  const endR = parseInt(endHex.slice(1, 3), 16);
+  const endG = parseInt(endHex.slice(3, 5), 16);
+  const endB = parseInt(endHex.slice(5, 7), 16);
+
+  return text.split("").map((char, i) => {
+    const ratio = i / (text.length - 1 || 1);
+    const r = Math.round(startR + (endR - startR) * ratio);
+    const g = Math.round(startG + (endG - startG) * ratio);
+    const b = Math.round(startB + (endB - startB) * ratio);
+    const color = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+    return ansis.hex(color).bold(char);
+  }).join("");
+}
+
 async function main() {
   parseAndHandleArgs();
 
   // Setup players
-  console.log(theme.ui.header("Welcome to Yahtzee!"));
+  const gradientText = getGradientText(" WELCOME TO YAHTZEE ", theme.ui.gradient.start, theme.ui.gradient.end);
+  console.log(`⚀ ⚁ ⚂ ${gradientText} ⚃ ⚄ ⚅`);
   const playerNames: { name: string; isAI: boolean }[] = [];
 
   while (true) {
