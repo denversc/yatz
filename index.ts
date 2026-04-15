@@ -119,36 +119,45 @@ async function main() {
 
   // Setup players
   console.log(theme.ui.header("Welcome to Yahtzee!"));
-  const numPlayers = parseInt(prompt("Number of players (1-4)?") || "1");
   const playerNames: { name: string; isAI: boolean }[] = [];
 
   let humanCount = 0;
   let aiCount = 0;
 
-  // Player 1 is always human
-  humanCount++;
-  playerNames.push({ name: `Player ${humanCount}`, isAI: false });
-
-  for (let i = 1; i < numPlayers; i++) {
-    let isAI = false;
-    while (true) {
-      const choice = (prompt(`Is Player ${i + 1} a (h) human or an (a) AI?`) || "").toLowerCase().trim();
-      if (choice === "a") {
-        isAI = true;
-        break;
-      } else if (choice === "h") {
-        isAI = false;
-        break;
-      }
-      console.log(theme.ui.error("Error: Please enter 'h' for human or 'a' for AI."));
+  // Player 1
+  while (true) {
+    const choice = (prompt("Is Player 1 (h) human or (a) AI?") || "").toLowerCase().trim();
+    if (choice === "h") {
+      humanCount++;
+      playerNames.push({ name: `Player ${humanCount}`, isAI: false });
+      break;
+    } else if (choice === "a") {
+      aiCount++;
+      playerNames.push({ name: `AI ${aiCount}`, isAI: true });
+      break;
     }
+    console.log(theme.ui.error("Error: Please enter 'h' for human or 'a' for AI."));
+  }
 
-    if (isAI) {
+  // Subsequent players
+  while (true) {
+    const nextPlayerNum = playerNames.length + 1;
+    const choice = (prompt(`Is Player ${nextPlayerNum} (h) human or (a) AI or are you (d) done adding players?`) || "").toLowerCase().trim();
+    
+    if (choice === "d") {
+      break;
+    } else if (choice === "h") {
+      humanCount++;
+      playerNames.push({ name: `Player ${humanCount}`, isAI: false });
+    } else if (choice === "a") {
       aiCount++;
       playerNames.push({ name: `AI ${aiCount}`, isAI: true });
     } else {
-      humanCount++;
-      playerNames.push({ name: `Player ${humanCount}`, isAI: false });
+      console.log(theme.ui.error("Error: Please enter 'h', 'a', or 'd'."));
+    }
+
+    if (playerNames.length >= 10) {
+      break;
     }
   }
 
