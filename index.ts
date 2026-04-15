@@ -1,12 +1,10 @@
 import { INITIAL_STATE, reducer, calculateScore, getTotalScore, getUpperScore, getBonus } from "./src/reducer";
 import { getAIAction } from "./src/ai";
 import { parseAndHandleArgs } from "./src/args";
-import { theme } from "./src/theme";
+import type { Theme } from "./src/theme";
 import type { Action, Category, GameState, Player } from "./src/types";
 import { CATEGORY_NAMES, CATEGORY_ICONS } from "./src/types";
 import { Ansis } from "ansis";
-
-let ansis = new Ansis();
 
 let state = INITIAL_STATE;
 
@@ -19,7 +17,7 @@ const DICE_FACES = {
   6: ["●   ●", "●   ●", "●   ●"],
 } as const;
 
-async function printGameState(state: GameState) {
+async function printGameState(state: GameState, theme: Theme) {
   if (state.phase === "GAME_OVER") {
     const winner = [...state.players].sort((a, b) => {
       const scoreA = getTotalScore(a.scorecard);
@@ -268,7 +266,7 @@ async function printGameState(state: GameState) {
   }
 }
 
-function getGradientText(text: string, startHex: string, endHex: string): string {
+function getGradientText(text: string, startHex: string, endHex: string, ansis: Ansis): string {
   const startR = parseInt(startHex.slice(1, 3), 16);
   const startG = parseInt(startHex.slice(3, 5), 16);
   const startB = parseInt(startHex.slice(5, 7), 16);
@@ -315,12 +313,12 @@ function safePrompt(message: string): string {
 }
 
 async function main() {
-  parseAndHandleArgs();
-  ansis = new Ansis(theme.level);
+  const theme = parseAndHandleArgs();
+  const ansis = new Ansis(theme.level);
 
   // Setup players
   const welcomeText = " WELCOME TO YAHTZEE ";
-  const gradientText = getGradientText(welcomeText, theme.ui.gradient.header.start, theme.ui.gradient.header.end);
+  const gradientText = getGradientText(welcomeText, theme.ui.gradient.header.start, theme.ui.gradient.header.end, ansis);
   const width = welcomeText.length;
   const L = 2 * width + 6;
   const start = theme.ui.gradient.border.start;
@@ -400,7 +398,7 @@ async function main() {
     const currentPlayer = state.players[state.currentPlayerIndex];
 
     if (currentPlayer.isAI) {
-      await printGameState(state);
+      await printGameState(state, theme);
       while (state.players[state.currentPlayerIndex] === currentPlayer && state.phase !== "GAME_OVER") {
         const turnNum = Object.values(currentPlayer.scorecard).filter(v => v !== null).length + 1;
         const rollNum = 3 - state.rollsLeft;
@@ -435,7 +433,7 @@ async function main() {
         state = reducer(state, action);
       }
     } else {
-      await printGameState(state);
+      await printGameState(state, theme);
       const rollNum = 3 - state.rollsLeft;
       
       // Draw visual dice
@@ -649,7 +647,7 @@ async function main() {
     }
   }
 
-  await printGameState(state);
+  await printGameState(state, theme);
 }
 
 main();

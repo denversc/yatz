@@ -91,8 +91,4 @@ export function createTheme(level?: number): Theme {
   };
 }
 
-export let theme = createTheme();
 
-export function updateTheme(level: number) {
-  theme = createTheme(level);
-}
