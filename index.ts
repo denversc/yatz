@@ -6,7 +6,7 @@ import type { Action, Category, GameState, Player } from "./src/types";
 import { CATEGORY_NAMES, CATEGORY_ICONS } from "./src/types";
 import { Ansis } from "ansis";
 
-const ansis = new Ansis();
+let ansis = new Ansis();
 
 let state = INITIAL_STATE;
 
@@ -316,6 +316,7 @@ function safePrompt(message: string): string {
 
 async function main() {
   parseAndHandleArgs();
+  ansis = new Ansis(theme.level);
 
   // Setup players
   const welcomeText = " WELCOME TO YAHTZEE ";
