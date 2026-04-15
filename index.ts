@@ -312,23 +312,14 @@ async function main() {
     if (currentPlayer.isAI) {
       await printGameState(state);
       while (state.players[state.currentPlayerIndex] === currentPlayer && state.phase !== "GAME_OVER") {
-        const rollNum = 3 - state.rollsLeft;
-        const action = getAIAction(state);
-        
-        if (action.type === "TOGGLE_KEEPER") {
-          state = reducer(state, action);
-          continue;
-        }
-
         const turnNum = Object.values(currentPlayer.scorecard).filter(v => v !== null).length + 1;
+        const rollNum = 3 - state.rollsLeft;
         console.log(`${theme.ui.fg(currentPlayer.name)}, Turn ${turnNum}, Roll ${rollNum}:`);
-        const isLastRoll = action.type === "SCORE_CATEGORY";
-        const diceToPrint = state.dice;
-        const keptToPrint = isLastRoll ? [false, false, false, false, false] : state.kept;
 
+        // Draw visual dice
         const diceRows = ["", "", "", "", ""];
-        diceToPrint.forEach((d, i) => {
-          const isKept = keptToPrint[i];
+        state.dice.forEach((d, i) => {
+          const isKept = state.kept[i];
           const t = isKept ? theme.dice.kept : theme.dice.default;
           const face = DICE_FACES[d as keyof typeof DICE_FACES];
           diceRows[0] += t(isKept ? " ╭[KEEP]─╮ " : " ╭───────╮ ") + " ";
@@ -338,13 +329,19 @@ async function main() {
           diceRows[4] += t(` ╰───────╯ `) + " ";
         });
         diceRows.forEach(row => console.log(row));
-        
+
+        let action = getAIAction(state);
+        while (action.type === "TOGGLE_KEEPER" || action.type === "CLEAR_KEEPERS") {
+          state = reducer(state, action);
+          action = getAIAction(state);
+        }
+
         if (action.type === "SCORE_CATEGORY") {
           const points = calculateScore(state.dice, action.category);
           const rollsUsed = 3 - state.rollsLeft;
           console.log(`${currentPlayer.name} scored ${points} points in ${action.category} after ${rollsUsed} roll${rollsUsed > 1 ? "s" : ""}`);
         }
-        
+
         state = reducer(state, action);
       }
     } else {
