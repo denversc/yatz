@@ -1,3 +1,4 @@
+import { calculateScore } from "./reducer";
 import type { Action, Category, GameState } from "./types";
 
 export function getAIAction(state: GameState): Action {
@@ -27,6 +28,17 @@ export function getAIAction(state: GameState): Action {
     (cat) => player.scorecard[cat] === null
   );
 
-  const randomCategory = availableCategories[Math.floor(Math.random() * availableCategories.length)];
-  return { type: "SCORE_CATEGORY", category: randomCategory };
+  // Find the category with the highest potential score
+  let bestCategory = availableCategories[0];
+  let maxScore = -1;
+
+  for (const cat of availableCategories) {
+    const score = calculateScore(state.dice, cat);
+    if (score > maxScore) {
+      maxScore = score;
+      bestCategory = cat;
+    }
+  }
+
+  return { type: "SCORE_CATEGORY", category: bestCategory };
 }
