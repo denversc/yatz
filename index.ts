@@ -24,7 +24,7 @@ async function printGameState(state: GameState) {
     })[0];
     const winScore = getTotalScore(winner.scorecard);
     const info = theme.ui.dim(`${winner.name} wins!`);
-    console.log(`\n${theme.ui.header(`≋≋≋≋≋≋ GAME OVER ❯ `)}${theme.ui.header(info)}${theme.ui.header(` ≋≋≋≋≋≋`)}`);
+    console.log(`\n${theme.ui.header(`≋≋≋≋≋≋≋≋≋≋≋≋ GAME OVER ❯ `)}${theme.ui.header(info)}${theme.ui.header(` ≋≋≋≋≋≋≋≋≋≋≋≋`)}`);
     
     if (state.players.length > 1) {
       const maxNameLen = Math.max(...state.players.map(p => p.name.length));
@@ -56,10 +56,12 @@ async function printGameState(state: GameState) {
     const currentPlayer = state.players[state.currentPlayerIndex];
     const turn = Object.values(currentPlayer.scorecard).filter(v => v !== null).length + 1;
     const roll = 3 - state.rollsLeft;
-    const info = theme.ui.dim(`${currentPlayer.name} ⋄ Turn ${turn} ⋄ Roll ${roll}`);
-    console.log(`\n${theme.ui.header(`⣿⣿⣿⣿⣿⣿ YAHTZEE ❯ `)}${theme.ui.header(info)}${theme.ui.header(` ⣿⣿⣿⣿⣿⣿`)}`);
+    if (roll === 1) {
+      const info = theme.ui.dim(`${currentPlayer.name} ⋄ Turn ${turn}`);
+      console.log(`\n${theme.ui.header(`⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿ YAHTZEE ❯ `)}${theme.ui.header(info)}${theme.ui.header(` ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿`)}`);
+    }
     
-    if (state.players.length > 1) {
+    if (state.players.length > 1 && roll <= 1) {
       const maxNameLen = Math.max(...state.players.map(p => p.name.length));
       const scoreLabelWidth = maxNameLen + 7;
 
