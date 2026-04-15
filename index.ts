@@ -1,16 +1,18 @@
 import { INITIAL_STATE, reducer, calculateScore } from "./src/reducer";
 import { getAIAction } from "./src/ai";
 import { parseAndHandleArgs } from "./src/args";
+import { theme } from "./src/theme";
 import type { Action, Category, GameState, Player } from "./src/types";
 
 let state = INITIAL_STATE;
 
 async function printGameState(state: GameState) {
-  console.log("\n=== YAHTZEE ===");
+  console.log(`\n${theme.ui.header("=== YAHTZEE ===")}`);
   state.players.forEach((p, i) => {
     const isCurrent = i === state.currentPlayerIndex;
     const total = Object.values(p.scorecard).reduce((a, b) => (a || 0) + (b || 0), 0);
-    console.log(`${isCurrent ? "> " : "  "}${p.name}${p.isAI ? " (AI)" : ""}: ${total} pts`);
+    const line = `${isCurrent ? "> " : "  "}${p.name}${p.isAI ? " (AI)" : ""}: ${total} pts`;
+    console.log(isCurrent ? theme.ui.current(line) : theme.ui.fg(line));
   });
 
   const currentPlayer = state.players[state.currentPlayerIndex];
@@ -19,7 +21,7 @@ async function printGameState(state: GameState) {
     const leftCategories: Category[] = ["ones", "twos", "threes", "fours", "fives", "sixes"];
     const rightCategories: Category[] = ["threeOfAKind", "fourOfAKind", "fullHouse", "smallStraight", "largeStraight", "yahtzee", "chance"];
 
-    const playerColumnWidth = 6;
+    const playerColumnWidth = 8; // Increased for color padding safety
     const totalScoreWidth = state.players.length * playerColumnWidth;
 
     const getScoreLine = (cat: Category) => {
@@ -27,17 +29,25 @@ async function printGameState(state: GameState) {
       return state.players.map((p, i) => {
         let display = "";
         if (p.scorecard[cat] !== null) {
-          display = p.scorecard[cat]!.toString();
+          display = theme.score.value(p.scorecard[cat]!.toString());
         } else {
-          display = i === state.currentPlayerIndex ? `(${potential})` : "[]";
+          display = i === state.currentPlayerIndex 
+            ? theme.score.potential(`(${potential})`) 
+            : theme.score.empty("[]");
         }
-        return display.padEnd(playerColumnWidth);
+        // Manual padding because ANSI strings have invisible length
+        const rawLength = p.scorecard[cat] !== null 
+          ? p.scorecard[cat]!.toString().length 
+          : (i === state.currentPlayerIndex ? `(${potential})`.length : 2);
+        
+        return display + " ".repeat(playerColumnWidth - rawLength);
       }).join("");
     };
 
     const upperSumsDisplay = state.players.map(p => {
       const sum = leftCategories.reduce((acc, cat) => acc + (p.scorecard[cat] || 0), 0);
-      return sum.toString().padEnd(playerColumnWidth);
+      const display = theme.score.sum(sum.toString());
+      return display + " ".repeat(playerColumnWidth - sum.toString().length);
     }).join("");
 
     const maxLength = Math.max(leftCategories.length + 1, rightCategories.length);
@@ -48,20 +58,20 @@ async function printGameState(state: GameState) {
       if (i < leftCategories.length) {
         const leftCat = leftCategories[i];
         const display = getScoreLine(leftCat);
-        line += `${leftCat.padEnd(7)}: ${display.padEnd(totalScoreWidth)}`;
+        line += `${theme.score.label(leftCat.padEnd(7))}: ${display}`;
       } else if (i === leftCategories.length) {
-        line += `sum    : ${upperSumsDisplay.padEnd(totalScoreWidth)}`;
+        line += `${theme.score.label("sum".padEnd(7))}: ${upperSumsDisplay}`;
       } else {
-        line += "".padEnd(9 + totalScoreWidth);
+        line += " ".repeat(9 + totalScoreWidth);
       }
 
-      line += "| ";
+      line += theme.ui.separator("| ");
 
       // Right Column
       const rightCat = rightCategories[i];
       if (rightCat) {
         const display = getScoreLine(rightCat);
-        line += `${rightCat.padEnd(14)}: ${display}`;
+        line += `${theme.score.label(rightCat.padEnd(14))}: ${display}`;
       }
       console.log(line);
     }
@@ -69,13 +79,14 @@ async function printGameState(state: GameState) {
   }
 
   if (state.phase === "GAME_OVER") {
-    console.log("\n=== GAME OVER ===");
+    console.log(`\n${theme.ui.header("=== GAME OVER ===")}`);
     const winner = [...state.players].sort((a, b) => {
       const scoreA = Object.values(a.scorecard).reduce((s, v) => (s || 0) + (v || 0), 0);
       const scoreB = Object.values(b.scorecard).reduce((s, v) => (s || 0) + (v || 0), 0);
       return (scoreB || 0) - (scoreA || 0);
     })[0];
-    console.log(`Winner: ${winner.name} with ${Object.values(winner.scorecard).reduce((a, b) => (a || 0) + (b || 0), 0)} pts!`);
+    const winScore = Object.values(winner.scorecard).reduce((a, b) => (a || 0) + (b || 0), 0);
+    console.log(theme.ui.current(`Winner: ${winner.name} with ${winScore} pts!`));
   }
 }
 
@@ -83,7 +94,7 @@ async function main() {
   parseAndHandleArgs();
 
   // Setup players
-  console.log("Welcome to Yahtzee!");
+  console.log(theme.ui.header("Welcome to Yahtzee!"));
   const numPlayers = parseInt(prompt("Number of players (1-4)?") || "1");
   const playerNames: { name: string; isAI: boolean }[] = [];
 
@@ -111,20 +122,23 @@ async function main() {
     await printGameState(state);
     const currentPlayer = state.players[state.currentPlayerIndex];
     const rollNum = 3 - state.rollsLeft;
-    const diceStr = `[${state.dice.map((d, i) => `${d}${state.kept[i] ? "*" : ""}`).join(" ")}]`;
+    const diceStr = `[${state.dice.map((d, i) => {
+      const val = `${d}${state.kept[i] ? "*" : ""}`;
+      return state.kept[i] ? theme.dice.kept(val) : theme.dice.default(val);
+    }).join(" ")}]`;
 
     if (currentPlayer.isAI) {
-      console.log(`${currentPlayer.name}, Roll ${rollNum}: ${diceStr}`);
+      console.log(`${theme.ui.fg(currentPlayer.name)}, Roll ${rollNum}: ${diceStr}`);
       await new Promise(r => setTimeout(r, 1000)); // Pause for AI "thinking"
       const action = getAIAction(state);
       state = reducer(state, action);
     } else {
       while (true) {
-        const promptText = `${currentPlayer.name}, Roll ${rollNum}: ${diceStr} >`;
+        const promptText = `${theme.ui.current(currentPlayer.name)}, Roll ${rollNum}: ${diceStr} >`;
         const input = (prompt(promptText) || "").toLowerCase().trim();
 
         if (input === "?") {
-          console.log("\nCommands:");
+          console.log(`\n${theme.ui.header("Commands:")}`);
           if (state.phase === "ROLLING") {
             console.log("  a       : roll all (clears keepers)");
             console.log("  r, ENTER: roll (keeps current keepers)");
@@ -157,7 +171,7 @@ async function main() {
           };
           
           if (content.length === 0) {
-            console.log("Error: Please specify dice to keep (e.g., k123 or kasd).");
+            console.log(theme.ui.error("Error: Please specify dice to keep (e.g., k123 or kasd)."));
             continue;
           }
 
@@ -170,7 +184,7 @@ async function main() {
           }
 
           if (hasInvalidChar) {
-            console.log("Error: Invalid dice index. Use 1-5 or a,s,d,f,g.");
+            console.log(theme.ui.error("Error: Invalid dice index. Use 1-5 or a,s,d,f,g."));
             continue;
           }
 
@@ -188,7 +202,7 @@ async function main() {
           };
 
           if (content.length === 0) {
-            console.log("Error: Please specify dice to discard (e.g., d123 or dasd).");
+            console.log(theme.ui.error("Error: Please specify dice to discard (e.g., d123 or dasd)."));
             continue;
           }
 
@@ -203,7 +217,7 @@ async function main() {
           }
 
           if (hasInvalidChar) {
-            console.log("Error: Invalid dice index. Use 1-5 or a,s,d,f,g.");
+            console.log(theme.ui.error("Error: Invalid dice index. Use 1-5 or a,s,d,f,g."));
             continue;
           }
 
@@ -223,7 +237,6 @@ async function main() {
             "ss": "smallStraight", "ls": "largeStraight", "y": "yahtzee", "c": "chance"
           };
 
-          // Try matching the part after 's' first (e.g., 'sfh' -> 'fh')
           let rawInput = input;
           if (input.startsWith("s") && input.length > 1) {
             const afterS = input.slice(1).replace(/\s/g, "");
@@ -240,19 +253,19 @@ async function main() {
           
           if (!actualCategory) {
             const validCategories = Object.keys(currentPlayer.scorecard);
-            console.log(`Error: Invalid category. Use one of: ${validCategories.join(", ")}`);
+            console.log(theme.ui.error(`Error: Invalid category. Use one of: ${validCategories.join(", ")}`));
             continue;
           }
           
           if (currentPlayer.scorecard[actualCategory] !== null) {
-            console.log("Error: Category already scored.");
+            console.log(theme.ui.error("Error: Category already scored."));
             continue;
           }
 
           state = reducer(state, { type: "SCORE_CATEGORY", category: actualCategory });
           break;
         } else {
-          console.log("Error: Invalid command.");
+          console.log(theme.ui.error("Error: Invalid command."));
           continue;
         }
       }
