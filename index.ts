@@ -25,15 +25,32 @@ async function printGameState(state: GameState) {
     const winScore = getTotalScore(winner.scorecard);
     const info = theme.ui.dim(`${winner.name} wins!`);
     console.log(`\n${theme.ui.header(`≋≋≋≋≋≋ GAME OVER ❯ `)}${theme.ui.header(info)}${theme.ui.header(` ≋≋≋≋≋≋`)}`);
+    
     if (state.players.length > 1) {
-      console.log("\nFinal Scores:");
       const maxNameLen = Math.max(...state.players.map(p => p.name.length));
-      state.players.forEach(p => {
+      const scoreLabelWidth = maxNameLen + 7;
+      
+      const scoresLines = state.players.map(p => {
         const total = getTotalScore(p.scorecard);
         const paddedName = p.name.padEnd(maxNameLen);
         const paddedScore = total.toString().padStart(3);
-        console.log(theme.ui.fg(`  ${paddedName}: ${paddedScore}`));
+        return { text: `  ${paddedName}: ${paddedScore}` };
       });
+
+      const rankedPlayers = [...state.players]
+        .map((p, i) => ({ p, score: getTotalScore(p.scorecard) }))
+        .sort((a, b) => b.score - a.score);
+
+      const rankingsLines = rankedPlayers.map(({ p, score }) => {
+        const paddedName = p.name.padEnd(maxNameLen);
+        const paddedScore = score.toString().padStart(3);
+        return { text: `  ${paddedName}: ${paddedScore}` };
+      });
+
+      console.log(`\n${"Final Scores:".padEnd(scoreLabelWidth + 4)}Final Rankings:`);
+      for (let i = 0; i < scoresLines.length; i++) {
+        console.log(`${theme.ui.fg(scoresLines[i].text)}${" ".repeat(4)}${theme.ui.fg(rankingsLines[i].text)}`);
+      }
     }
   } else {
     const currentPlayer = state.players[state.currentPlayerIndex];
@@ -41,17 +58,44 @@ async function printGameState(state: GameState) {
     const roll = 3 - state.rollsLeft;
     const info = theme.ui.dim(`${currentPlayer.name} ⋄ Turn ${turn} ⋄ Roll ${roll}`);
     console.log(`\n${theme.ui.header(`⣿⣿⣿⣿⣿⣿ YAHTZEE ❯ `)}${theme.ui.header(info)}${theme.ui.header(` ⣿⣿⣿⣿⣿⣿`)}`);
+    
     if (state.players.length > 1) {
-      console.log("\nScores:");
       const maxNameLen = Math.max(...state.players.map(p => p.name.length));
-      state.players.forEach((p, i) => {
+      const scoreLabelWidth = maxNameLen + 7;
+
+      const scoresLines = state.players.map((p, i) => {
         const isCurrent = i === state.currentPlayerIndex;
         const total = getTotalScore(p.scorecard);
         const paddedName = p.name.padEnd(maxNameLen);
         const paddedScore = total.toString().padStart(3);
-        const line = `${isCurrent ? "> " : "  "}${paddedName}: ${paddedScore}`;
-        console.log(isCurrent ? theme.ui.current(line) : theme.ui.fg(line));
+        return {
+          text: `${isCurrent ? "> " : "  "}${paddedName}: ${paddedScore}`,
+          isCurrent
+        };
       });
+
+      const rankedPlayers = [...state.players]
+        .map((p, i) => ({ p, originalIndex: i, score: getTotalScore(p.scorecard) }))
+        .sort((a, b) => b.score - a.score);
+
+      const rankingsLines = rankedPlayers.map(({ p, originalIndex, score }) => {
+        const isCurrent = originalIndex === state.currentPlayerIndex;
+        const paddedName = p.name.padEnd(maxNameLen);
+        const paddedScore = score.toString().padStart(3);
+        return {
+          text: `${isCurrent ? "> " : "  "}${paddedName}: ${paddedScore}`,
+          isCurrent
+        };
+      });
+
+      console.log(`\n${"Scores:".padEnd(scoreLabelWidth + 4)}Rankings:`);
+      for (let i = 0; i < scoresLines.length; i++) {
+        const s = scoresLines[i];
+        const r = rankingsLines[i];
+        const sOut = s.isCurrent ? theme.ui.current(s.text) : theme.ui.fg(s.text);
+        const rOut = r.isCurrent ? theme.ui.current(r.text) : theme.ui.fg(r.text);
+        console.log(`${sOut}${" ".repeat(4)}${rOut}`);
+      }
     }
   }
 
