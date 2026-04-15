@@ -185,8 +185,22 @@ async function main() {
             console.log("            Shortcuts: 1-6, 3k, 4k, fh, ss, ls, y, c");
             console.log("  s[cat]  : same as above");
           }
+          console.log("  q       : quit (with confirmation)");
+          console.log("  q!      : quit immediately");
           console.log("");
           continue;
+        }
+
+        if (input === "q") {
+          const confirmQuit = (prompt("Do you really want to quit (y/n)?") || "n").toLowerCase().trim();
+          if (confirmQuit === "y") {
+            process.exit(0);
+          }
+          continue;
+        }
+
+        if (input === "q!") {
+          process.exit(0);
         }
 
         if (input === "a" && state.phase === "ROLLING") {
