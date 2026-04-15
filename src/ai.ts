@@ -1,8 +1,14 @@
 import { calculateScore } from "./reducer";
 import type { Action, Category, GameState } from "./types";
 
-const lowerSectionPriority: Category[] = [
+const strongPriority: Category[] = [
   "yahtzee",
+  "ones",
+  "twos",
+  "threes",
+  "fours",
+  "fives",
+  "sixes",
   "largeStraight",
   "smallStraight",
   "fourOfAKind",
@@ -12,55 +18,65 @@ const lowerSectionPriority: Category[] = [
 
 const upperSection: Category[] = ["ones", "twos", "threes", "fours", "fives", "sixes"];
 
+function isStrong(cat: Category, score: number): boolean {
+  if (cat === "ones") return score >= 3;
+  if (cat === "twos") return score >= 6;
+  if (cat === "threes") return score >= 9;
+  if (cat === "fours") return score >= 12;
+  if (cat === "fives") return score >= 15;
+  if (cat === "sixes") return score >= 18;
+  if (cat === "chance") return false;
+  return score > 0;
+}
+
 export function getAIAction(state: GameState): Action {
   const player = state.players[state.currentPlayerIndex];
   const dice = state.dice;
   const scorecard = player.scorecard;
 
-  // Helper to find the best lower section category (excluding chance) with > 0 points
-  const getBestLower = () => {
+  // Helper to find the best "Strong" category
+  const getBestStrong = () => {
     let bestCat: Category | null = null;
     let maxVal = -1;
 
-    for (const cat of lowerSectionPriority) {
+    for (const cat of strongPriority) {
       if (scorecard[cat] === null) {
         const score = calculateScore(dice, cat);
-        if (score > 0) {
+        if (isStrong(cat, score)) {
           if (score > maxVal) {
             maxVal = score;
             bestCat = cat;
           }
-          // If score === maxVal, we keep the one already found as it has higher priority
+          // Ties are broken by the order in strongPriority
         }
       }
     }
     return bestCat;
   };
 
-  const bestLower = getBestLower();
+  const bestStrong = getBestStrong();
 
-  // 1. Exception: Skip re-roll and score immediately if any lower (excl. chance) is non-zero
-  if (bestLower !== null) {
-    return { type: "SCORE_CATEGORY", category: bestLower };
+  // 1. Skip re-roll and score immediately if any "Strong" category is found
+  if (bestStrong !== null) {
+    return { type: "SCORE_CATEGORY", category: bestStrong };
   }
 
-  // 2. Re-roll if possible (ALWAYS re-roll)
+  // 2. Re-roll if possible (ALWAYS re-roll if no strong category found)
   if (state.phase === "ROLLING" && state.rollsLeft > 0) {
-    // To ensure we roll all dice as implied by "ALWAYS re-roll", clear any keepers first.
     if (state.kept.some(k => k)) {
       return { type: "CLEAR_KEEPERS" };
     }
     return { type: "ROLL_DICE" };
   }
 
-  // 3. Final Scoring Logic (Final roll or no lower section points found)
+  // 3. Final Scoring Logic (Final roll or no strong points found)
 
-  // 3a. Best lower (already checked, if null move to upper)
-  if (bestLower !== null) {
-    return { type: "SCORE_CATEGORY", category: bestLower };
+  // 3a. Best strong (already checked, but for completeness in SCORING phase)
+  if (bestStrong !== null) {
+    return { type: "SCORE_CATEGORY", category: bestStrong };
   }
 
-  // 3b. Upper section that gives the most points
+  // 3b. Upper section that gives the most points (Fallback)
   let bestUpper: Category | null = null;
   let maxUpperVal = -1;
   for (const cat of upperSection) {
