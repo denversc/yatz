@@ -17,13 +17,13 @@ const DICE_FACES = {
 
 async function printGameState(state: GameState) {
   if (state.phase === "GAME_OVER") {
-    console.log(`\n${theme.ui.header("=== GAME OVER ===")}`);
+    console.log(`\n${theme.ui.header("≋≋≋ GAME OVER ≋≋≋")}`);
     state.players.forEach(p => {
       const total = getTotalScore(p.scorecard);
       console.log(theme.ui.fg(`  ${p.name}${p.isAI ? " (AI)" : ""}: ${total} pts`));
     });
   } else {
-    console.log(`\n${theme.ui.header("=== YAHTZEE ===")}`);
+    console.log(`\n${theme.ui.header("⣿⣿⣿ YAHTZEE ⣿⣿⣿")}`);
     state.players.forEach((p, i) => {
       const isCurrent = i === state.currentPlayerIndex;
       const total = getTotalScore(p.scorecard);
