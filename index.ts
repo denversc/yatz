@@ -121,44 +121,49 @@ async function main() {
   console.log(theme.ui.header("Welcome to Yahtzee!"));
   const playerNames: { name: string; isAI: boolean }[] = [];
 
-  let humanCount = 0;
-  let aiCount = 0;
-
-  // Player 1
   while (true) {
-    const choice = (prompt("Is Player 1 (h) human or (a) AI?") || "").toLowerCase().trim();
-    if (choice === "h") {
-      humanCount++;
-      playerNames.push({ name: `Player ${humanCount}`, isAI: false });
-      break;
-    } else if (choice === "a") {
-      aiCount++;
-      playerNames.push({ name: `AI ${aiCount}`, isAI: true });
-      break;
-    }
-    console.log(theme.ui.error("Error: Please enter 'h' for human or 'a' for AI."));
-  }
+    const input = (prompt("Enter the players (? for help):") || "").toLowerCase().trim();
 
-  // Subsequent players
-  while (true) {
-    const nextPlayerNum = playerNames.length + 1;
-    const choice = (prompt(`Is Player ${nextPlayerNum} (h) human or (a) AI or are you (d) done adding players?`) || "").toLowerCase().trim();
-    
-    if (choice === "d") {
-      break;
-    } else if (choice === "h") {
-      humanCount++;
-      playerNames.push({ name: `Player ${humanCount}`, isAI: false });
-    } else if (choice === "a") {
-      aiCount++;
-      playerNames.push({ name: `AI ${aiCount}`, isAI: true });
-    } else {
-      console.log(theme.ui.error("Error: Please enter 'h', 'a', or 'd'."));
+    if (input === "?") {
+      console.log("\nEnter a string where each character represents a player:");
+      console.log("  'h' : Human player");
+      console.log("  'a' : AI player");
+      console.log("Example: 'hha' creates two human players and one AI player.");
+      console.log("Whitespace is ignored.\n");
+      continue;
     }
 
-    if (playerNames.length >= 10) {
-      break;
+    const cleanedInput = input.replace(/\s/g, "");
+    if (cleanedInput.length === 0) {
+      console.log(theme.ui.error("Error: Player string cannot be empty."));
+      continue;
     }
+
+    let isValid = true;
+    const tempPlayers: { name: string; isAI: boolean }[] = [];
+    let humanCount = 0;
+    let aiCount = 0;
+
+    for (const char of cleanedInput) {
+      if (char === "h") {
+        humanCount++;
+        tempPlayers.push({ name: `Player ${humanCount}`, isAI: false });
+      } else if (char === "a") {
+        aiCount++;
+        tempPlayers.push({ name: `AI ${aiCount}`, isAI: true });
+      } else {
+        isValid = false;
+        break;
+      }
+    }
+
+    if (!isValid) {
+      console.log(theme.ui.error("Error: Invalid input. Only 'h', 'a', and whitespace are allowed."));
+      continue;
+    }
+
+    playerNames.push(...tempPlayers);
+    break;
   }
 
   state = reducer(state, { type: "START_GAME", playerNames });
