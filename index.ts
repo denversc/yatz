@@ -78,7 +78,7 @@ async function printGameState(state: GameState) {
 
     const bonusDisplay = state.players.map(p => {
       const bonus = getBonus(p.scorecard);
-      const display = theme.score.sum(bonus.toString());
+      const display = bonus > 0 ? theme.score.value(bonus.toString()) : theme.score.sum(bonus.toString());
       return display + " ".repeat(playerColumnWidth - bonus.toString().length);
     }).join("");
 
