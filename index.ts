@@ -55,8 +55,8 @@ async function printGameState(state: GameState) {
 
     const playerColumnWidth = 8;
     const totalScoreWidth = state.players.length * playerColumnWidth;
-    const leftWidth = 15 + totalScoreWidth;
-    const rightWidth = 17 + totalScoreWidth;
+    const leftWidth = 11 + totalScoreWidth;
+    const rightWidth = 16 + totalScoreWidth;
 
     const getScoreLine = (cat: Category) => {
       const potential = calculateScore(state.dice, cat);
@@ -123,12 +123,12 @@ async function printGameState(state: GameState) {
       } else {
         const label = CATEGORY_LABELS[leftItem] || leftItem;
         if (leftItem === "sum") {
-          line += `${theme.score.label(label.padEnd(13))}: ${upperSumsDisplay}`;
+          line += `${theme.score.label(label.padEnd(9))}: ${upperSumsDisplay}`;
         } else if (leftItem === "bonus") {
-          line += `${theme.score.label(label.padEnd(13))}: ${bonusDisplay}`;
+          line += `${theme.score.label(label.padEnd(9))}: ${bonusDisplay}`;
         } else {
           const display = getScoreLine(leftItem as Category);
-          line += `${theme.score.label(label.padEnd(13))}: ${display}`;
+          line += `${theme.score.label(label.padEnd(9))}: ${display}`;
         }
       }
 
@@ -141,7 +141,7 @@ async function printGameState(state: GameState) {
       } else {
         const label = CATEGORY_LABELS[rightItem] || rightItem;
         const display = getScoreLine(rightItem);
-        line += `${theme.score.label(label.padEnd(15))}: ${display}`;
+        line += `${theme.score.label(label.padEnd(14))}: ${display}`;
       }
       line += theme.ui.border(" │");
       console.log(line);
