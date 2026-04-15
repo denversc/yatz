@@ -195,6 +195,11 @@ async function main() {
         });
         diceRows.forEach(row => console.log(row));
         
+        if (action.type === "SCORE_CATEGORY") {
+          const points = calculateScore(state.dice, action.category);
+          console.log(`${currentPlayer.name} scored ${points} points in ${action.category}`);
+        }
+        
         state = reducer(state, action);
       }
     } else {
@@ -396,6 +401,9 @@ async function main() {
             console.log(theme.ui.error("Error: Category already scored."));
             continue;
           }
+
+          const points = calculateScore(state.dice, actualCategory);
+          console.log(`${currentPlayer.name} scored ${points} points in ${actualCategory}`);
 
           state = reducer(state, { type: "SCORE_CATEGORY", category: actualCategory });
           break;
