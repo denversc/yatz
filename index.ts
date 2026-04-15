@@ -16,16 +16,24 @@ const DICE_FACES = {
 } as const;
 
 async function printGameState(state: GameState) {
-  console.log(`\n${theme.ui.header("=== YAHTZEE ===")}`);
-  state.players.forEach((p, i) => {
-    const isCurrent = i === state.currentPlayerIndex;
-    const total = getTotalScore(p.scorecard);
-    const line = `${isCurrent ? "> " : "  "}${p.name}${p.isAI ? " (AI)" : ""}: ${total} pts`;
-    console.log(isCurrent ? theme.ui.current(line) : theme.ui.fg(line));
-  });
+  if (state.phase === "GAME_OVER") {
+    console.log(`\n${theme.ui.header("=== GAME OVER ===")}`);
+    state.players.forEach(p => {
+      const total = getTotalScore(p.scorecard);
+      console.log(theme.ui.fg(`  ${p.name}${p.isAI ? " (AI)" : ""}: ${total} pts`));
+    });
+  } else {
+    console.log(`\n${theme.ui.header("=== YAHTZEE ===")}`);
+    state.players.forEach((p, i) => {
+      const isCurrent = i === state.currentPlayerIndex;
+      const total = getTotalScore(p.scorecard);
+      const line = `${isCurrent ? "> " : "  "}${p.name}${p.isAI ? " (AI)" : ""}: ${total} pts`;
+      console.log(isCurrent ? theme.ui.current(line) : theme.ui.fg(line));
+    });
+  }
 
   const currentPlayer = state.players[state.currentPlayerIndex];
-  if (state.phase !== "START" && state.phase !== "GAME_OVER") {
+  if (state.phase !== "START") {
     console.log("");
     const leftCategories: Category[] = ["ones", "twos", "threes", "fours", "fives", "sixes"];
     const rightCategories: Category[] = ["threeOfAKind", "fourOfAKind", "fullHouse", "smallStraight", "largeStraight", "yahtzee", "chance"];
@@ -45,7 +53,7 @@ async function printGameState(state: GameState) {
         if (p.scorecard[cat] !== null) {
           display = theme.score.value(p.scorecard[cat]!.toString());
           rawLength = p.scorecard[cat]!.toString().length;
-        } else if (isCurrent) {
+        } else if (isCurrent && state.phase !== "GAME_OVER") {
           if (p.isAI) {
             display = "";
             rawLength = 0;
@@ -111,7 +119,6 @@ async function printGameState(state: GameState) {
   }
 
   if (state.phase === "GAME_OVER") {
-    console.log(`\n${theme.ui.header("=== GAME OVER ===")}`);
     const winner = [...state.players].sort((a, b) => {
       const scoreA = getTotalScore(a.scorecard);
       const scoreB = getTotalScore(b.scorecard);
