@@ -1,6 +1,7 @@
 import { Ansis } from "ansis";
 
 export interface Theme {
+  level: number;
   ui: {
     bg: (s: string) => string;
     fg: (s: string) => string;
@@ -41,6 +42,7 @@ export function createTheme(level?: number): Theme {
   const a = level !== undefined ? new Ansis(level) : new Ansis();
 
   return {
+    level: a.level,
     ui: {
       bg: a.bg(COLORS.bg),
       fg: a.hex(COLORS.fg),
@@ -58,7 +60,7 @@ export function createTheme(level?: number): Theme {
       value: a.hex(COLORS.green),
       potential: a.hex(COLORS.comment).italic,
       empty: a.hex(COLORS.dark3),
-      sum: a.hex(COLORS.yellow).bold,
+      sum: a.hex(COLORS.comment).italic,
     },
   };
 }

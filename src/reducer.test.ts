@@ -36,6 +36,7 @@ describe("reducer", () => {
     expect(state.players.length).toBe(1);
     expect(state.players[0].name).toBe("Alice");
     expect(state.phase).toBe("ROLLING");
+    expect(state.rollsLeft).toBe(2); // Starts with first roll done
   });
 
   test("ROLL_DICE", () => {
@@ -43,8 +44,9 @@ describe("reducer", () => {
       type: "START_GAME",
       playerNames: [{ name: "Alice", isAI: false }],
     });
+    // Already has 1 roll done (rollsLeft: 2)
     state = reducer(state, { type: "ROLL_DICE" });
-    expect(state.rollsLeft).toBe(2);
+    expect(state.rollsLeft).toBe(1);
     expect(state.dice.every(d => d >= 1 && d <= 6)).toBe(true);
   });
 });

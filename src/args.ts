@@ -45,8 +45,6 @@ export function parseAndHandleArgs() {
       process.exit(2);
     }
   } catch (e: any) {
-    // ... rest unchanged
-
     if (e.code === "ERR_PARSE_ARGS_UNKNOWN_OPTION") {
       const option = e.message.match(/'(.+)'/)?.[1] || "unknown";
       console.error(`Error: Option "${option}" is not supported.`);

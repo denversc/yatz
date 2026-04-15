@@ -123,8 +123,9 @@ async function main() {
     const currentPlayer = state.players[state.currentPlayerIndex];
     const rollNum = 3 - state.rollsLeft;
     const diceStr = `[${state.dice.map((d, i) => {
-      const val = `${d}${state.kept[i] ? "*" : ""}`;
-      return state.kept[i] ? theme.dice.kept(val) : theme.dice.default(val);
+      const isKept = state.kept[i];
+      const val = isKept && theme.level === 0 ? `${d}*` : `${d}`;
+      return isKept ? theme.dice.kept(val) : theme.dice.default(val);
     }).join(" ")}]`;
 
     if (currentPlayer.isAI) {
