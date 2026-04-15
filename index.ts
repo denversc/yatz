@@ -6,6 +6,15 @@ import type { Action, Category, GameState, Player } from "./src/types";
 
 let state = INITIAL_STATE;
 
+const DICE_FACES = {
+  1: ["     ", "  ●  ", "     "],
+  2: ["●    ", "     ", "    ●"],
+  3: ["●    ", "  ●  ", "    ●"],
+  4: ["●   ●", "     ", "●   ●"],
+  5: ["●   ●", "  ●  ", "●   ●"],
+  6: ["●   ●", "●   ●", "●   ●"],
+} as const;
+
 async function printGameState(state: GameState) {
   console.log(`\n${theme.ui.header("=== YAHTZEE ===")}`);
   state.players.forEach((p, i) => {
@@ -23,6 +32,8 @@ async function printGameState(state: GameState) {
 
     const playerColumnWidth = 8; // Increased for color padding safety
     const totalScoreWidth = state.players.length * playerColumnWidth;
+    const leftWidth = 9 + totalScoreWidth;
+    const rightWidth = 16 + totalScoreWidth;
 
     const getScoreLine = (cat: Category) => {
       const potential = calculateScore(state.dice, cat);
@@ -33,12 +44,12 @@ async function printGameState(state: GameState) {
         } else {
           display = i === state.currentPlayerIndex 
             ? theme.score.potential(`(${potential})`) 
-            : theme.score.empty("[]");
+            : theme.score.empty("·");
         }
         // Manual padding because ANSI strings have invisible length
         const rawLength = p.scorecard[cat] !== null 
           ? p.scorecard[cat]!.toString().length 
-          : (i === state.currentPlayerIndex ? `(${potential})`.length : 2);
+          : (i === state.currentPlayerIndex ? `(${potential})`.length : 1);
         
         return display + " ".repeat(playerColumnWidth - rawLength);
       }).join("");
@@ -50,9 +61,11 @@ async function printGameState(state: GameState) {
       return display + " ".repeat(playerColumnWidth - sum.toString().length);
     }).join("");
 
+    console.log(theme.ui.border(`┌─${"─".repeat(leftWidth)}─┬─${"─".repeat(rightWidth)}─┐`));
+
     const maxLength = Math.max(leftCategories.length + 1, rightCategories.length);
     for (let i = 0; i < maxLength; i++) {
-      let line = "";
+      let line = theme.ui.border("│ ");
 
       // Left Column
       if (i < leftCategories.length) {
@@ -62,19 +75,23 @@ async function printGameState(state: GameState) {
       } else if (i === leftCategories.length) {
         line += `${theme.score.label("sum".padEnd(7))}: ${upperSumsDisplay}`;
       } else {
-        line += " ".repeat(9 + totalScoreWidth);
+        line += " ".repeat(leftWidth);
       }
 
-      line += theme.ui.separator("| ");
+      line += theme.ui.border(" │ ");
 
       // Right Column
       const rightCat = rightCategories[i];
       if (rightCat) {
         const display = getScoreLine(rightCat);
         line += `${theme.score.label(rightCat.padEnd(14))}: ${display}`;
+      } else {
+        line += " ".repeat(rightWidth);
       }
+      line += theme.ui.border(" │");
       console.log(line);
     }
+    console.log(theme.ui.border(`└─${"─".repeat(leftWidth)}─┴─${"─".repeat(rightWidth)}─┘`));
     console.log("");
   }
 
@@ -122,20 +139,33 @@ async function main() {
     await printGameState(state);
     const currentPlayer = state.players[state.currentPlayerIndex];
     const rollNum = 3 - state.rollsLeft;
-    const diceStr = `[${state.dice.map((d, i) => {
+    
+    // Draw visual dice
+    const diceRows = ["", "", "", "", ""]; // top, mid, bot, labels
+    state.dice.forEach((d, i) => {
       const isKept = state.kept[i];
-      const val = isKept && theme.level === 0 ? `${d}*` : `${d}`;
-      return isKept ? theme.dice.kept(val) : theme.dice.default(val);
-    }).join(" ")}]`;
+      const t = isKept ? theme.dice.kept : theme.dice.default;
+      const face = DICE_FACES[d as keyof typeof DICE_FACES];
+      
+      diceRows[0] += t(" ╭───────╮ ") + " ";
+      diceRows[1] += t(` │ ${face[0]} │ `) + " ";
+      diceRows[2] += t(` │ ${face[1]} │ `) + " ";
+      diceRows[3] += t(` │ ${face[2]} │ `) + " ";
+      diceRows[4] += t(` ╰───────╯ `) + " ";
+
+    });
 
     if (currentPlayer.isAI) {
-      console.log(`${theme.ui.fg(currentPlayer.name)}, Roll ${rollNum}: ${diceStr}`);
+      console.log(`${theme.ui.fg(currentPlayer.name)}, Roll ${rollNum}:`);
+      diceRows.forEach(row => console.log(row));
       await new Promise(r => setTimeout(r, 1000)); // Pause for AI "thinking"
       const action = getAIAction(state);
       state = reducer(state, action);
     } else {
       while (true) {
-        const promptText = `${theme.ui.current(currentPlayer.name)}, Roll ${rollNum}: ${diceStr} >`;
+        console.log(`${theme.ui.current(currentPlayer.name)}, Roll ${rollNum}:`);
+        diceRows.forEach(row => console.log(row));
+        const promptText = ` >`;
         const input = (prompt(promptText) || "").toLowerCase().trim();
 
         if (input === "?") {

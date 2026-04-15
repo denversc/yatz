@@ -8,6 +8,7 @@ export interface Theme {
     header: (s: string) => string;
     current: (s: string) => string;
     separator: (s: string) => string;
+    border: (s: string) => string;
     error: (s: string) => string;
   };
   dice: {
@@ -49,6 +50,7 @@ export function createTheme(level?: number): Theme {
       header: a.hex(COLORS.magenta).bold,
       current: a.hex(COLORS.blue).bold,
       separator: a.hex(COLORS.dark3),
+      border: a.hex(COLORS.dark3),
       error: a.hex(COLORS.red).bold,
     },
     dice: {
