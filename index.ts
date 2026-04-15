@@ -21,7 +21,7 @@ async function printGameState(state: GameState) {
     if (state.players.length > 1) {
       state.players.forEach(p => {
         const total = getTotalScore(p.scorecard);
-        console.log(theme.ui.fg(`  ${p.name}${p.isAI ? " (AI)" : ""}: ${total} pts`));
+        console.log(theme.ui.fg(`  ${p.name}: ${total} pts`));
       });
     }
   } else {
@@ -29,7 +29,7 @@ async function printGameState(state: GameState) {
     state.players.forEach((p, i) => {
       const isCurrent = i === state.currentPlayerIndex;
       const total = getTotalScore(p.scorecard);
-      const line = `${isCurrent ? "> " : "  "}${p.name}${p.isAI ? " (AI)" : ""}: ${total} pts`;
+      const line = `${isCurrent ? "> " : "  "}${p.name}: ${total} pts`;
       console.log(isCurrent ? theme.ui.current(line) : theme.ui.fg(line));
     });
   }
@@ -55,7 +55,7 @@ async function printGameState(state: GameState) {
       chance: "❂ chance",
     };
 
-    const playerColumnWidth = 8;
+    const playerColumnWidth = 5;
     const totalScoreWidth = state.players.length * playerColumnWidth;
     const leftWidth = 11 + totalScoreWidth;
     const rightWidth = 16 + totalScoreWidth;
@@ -196,7 +196,7 @@ async function main() {
     for (const char of cleanedInput) {
       if (char === "h") {
         humanCount++;
-        tempPlayers.push({ name: `Player ${humanCount}`, isAI: false });
+        tempPlayers.push({ name: `Human ${humanCount}`, isAI: false });
       } else if (char === "a") {
         aiCount++;
         tempPlayers.push({ name: `AI ${aiCount}`, isAI: true });
