@@ -112,6 +112,21 @@ async function printGameState(state: GameState) {
       "chance"
     ];
 
+    const getStyledLabel = (key: string, width: number) => {
+      const label = CATEGORY_LABELS[key] || key;
+      const isAvailable = key !== "sum" && key !== "bonus" && currentPlayer.scorecard[key as Category] === null;
+      if (!isAvailable) {
+        return (key === "sum" || key === "bonus")
+          ? theme.score.label(label.padEnd(width))
+          : theme.ui.dim(theme.score.label(label.padEnd(width)));
+      }
+      const firstSpace = label.indexOf(" ");
+      if (firstSpace === -1) return theme.ui.bold(theme.score.label(label.padEnd(width)));
+      const icon = label.slice(0, firstSpace);
+      const text = label.slice(firstSpace + 1);
+      return theme.score.label(icon) + " " + theme.ui.bold(theme.score.label(text.padEnd(width - icon.length - 1)));
+    };
+
     console.log(theme.ui.border(`┌─${"─".repeat(leftWidth)}─┬─${"─".repeat(rightWidth)}─┐`));
 
     const maxLength = Math.max(leftRows.length, rightRows.length);
@@ -123,14 +138,14 @@ async function printGameState(state: GameState) {
       if (leftItem === null || i >= leftRows.length) {
         line += " ".repeat(leftWidth);
       } else {
-        const label = CATEGORY_LABELS[leftItem] || leftItem;
+        const styledLabel = getStyledLabel(leftItem, 9);
         if (leftItem === "sum") {
-          line += `${theme.score.label(label.padEnd(9))}: ${upperSumsDisplay}`;
+          line += `${styledLabel}: ${upperSumsDisplay}`;
         } else if (leftItem === "bonus") {
-          line += `${theme.score.label(label.padEnd(9))}: ${bonusDisplay}`;
+          line += `${styledLabel}: ${bonusDisplay}`;
         } else {
           const display = getScoreLine(leftItem as Category);
-          line += `${theme.score.label(label.padEnd(9))}: ${display}`;
+          line += `${styledLabel}: ${display}`;
         }
       }
 
@@ -141,9 +156,9 @@ async function printGameState(state: GameState) {
       if (rightItem === null || i >= rightRows.length) {
         line += " ".repeat(rightWidth);
       } else {
-        const label = CATEGORY_LABELS[rightItem] || rightItem;
+        const styledLabel = getStyledLabel(rightItem, 14);
         const display = getScoreLine(rightItem);
-        line += `${theme.score.label(label.padEnd(14))}: ${display}`;
+        line += `${styledLabel}: ${display}`;
       }
       line += theme.ui.border(" │");
       console.log(line);
