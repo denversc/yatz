@@ -127,10 +127,12 @@ async function main() {
             console.log("  r, ENTER: roll (keeps current keepers)");
             console.log("  k[1-5]  : keep specified dice and roll (e.g. k125)");
             console.log("  k[a-g]  : keep using home row (a=1, s=2, d=3, f=4, g=5)");
-            console.log("  s [cat] : score in category (e.g. s ones, s fullHouse)");
+            console.log("  s[cat]  : score in category (e.g. sfh, s 1)");
+            console.log("            Shortcuts: 1-6, 3k, 4k, fh, ss, ls, y, c");
           } else {
-            console.log("  [cat]   : score in category (e.g. ones, fullHouse)");
-            console.log("  s [cat] : same as above");
+            console.log("  [cat]   : score in category (e.g. fh, 1)");
+            console.log("            Shortcuts: 1-6, 3k, 4k, fh, ss, ls, y, c");
+            console.log("  s[cat]  : same as above");
           }
           console.log("");
           continue;
@@ -174,8 +176,24 @@ async function main() {
 
           state = reducer(state, { type: "ROLL_DICE" });
           break;
-        } else if (input.startsWith("s ") || (state.phase === "SCORING" && input !== "")) {
-          const categoryInput = input.startsWith("s ") ? input.split(" ")[1] : input;
+        } else if (input.startsWith("s") || (state.phase === "SCORING" && input !== "")) {
+          const shortcuts: Record<string, Category> = {
+            "1": "ones", "2": "twos", "3": "threes", "4": "fours", "5": "fives", "6": "sixes",
+            "3k": "threeOfAKind", "4k": "fourOfAKind", "fh": "fullHouse",
+            "ss": "smallStraight", "ls": "largeStraight", "y": "yahtzee", "c": "chance"
+          };
+
+          // Try matching the part after 's' first (e.g., 'sfh' -> 'fh')
+          let rawInput = input;
+          if (input.startsWith("s") && input.length > 1) {
+            const afterS = input.slice(1).replace(/\s/g, "");
+            if (shortcuts[afterS] || (Object.keys(currentPlayer.scorecard) as Category[]).some(c => c.toLowerCase() === afterS)) {
+              rawInput = afterS;
+            }
+          }
+          
+          const categoryInput = (shortcuts[rawInput] || rawInput).toLowerCase();
+
           const actualCategory = (Object.keys(currentPlayer.scorecard) as Category[]).find(
             cat => cat.toLowerCase() === categoryInput
           );
