@@ -35,9 +35,6 @@ async function printGameState(state: GameState) {
   const currentPlayer = state.players[state.currentPlayerIndex];
   if (state.phase !== "START") {
     console.log("");
-    const leftCategories: Category[] = ["ones", "twos", "threes", "fours", "fives", "sixes"];
-    const rightCategories: Category[] = ["threeOfAKind", "fourOfAKind", "fullHouse", "smallStraight", "largeStraight", "yahtzee", "chance"];
-
     const playerColumnWidth = 8; // Increased for color padding safety
     const totalScoreWidth = state.players.length * playerColumnWidth;
     const leftWidth = 9 + totalScoreWidth;
@@ -82,34 +79,47 @@ async function printGameState(state: GameState) {
       return display + " ".repeat(playerColumnWidth - bonus.toString().length);
     }).join("");
 
+    const leftRows: (Category | "sum" | "bonus" | null)[] = [
+      "ones", "twos", "threes", "fours", "fives", "sixes",
+      null,
+      "sum", "bonus"
+    ];
+    const rightRows: (Category | null)[] = [
+      "threeOfAKind", "fourOfAKind",
+      null,
+      "fullHouse", "smallStraight", "largeStraight", "yahtzee",
+      null,
+      "chance"
+    ];
+
     console.log(theme.ui.border(`┌─${"─".repeat(leftWidth)}─┬─${"─".repeat(rightWidth)}─┐`));
 
-    const maxLength = Math.max(leftCategories.length + 2, rightCategories.length);
+    const maxLength = Math.max(leftRows.length, rightRows.length);
     for (let i = 0; i < maxLength; i++) {
       let line = theme.ui.border("│ ");
 
       // Left Column
-      if (i < leftCategories.length) {
-        const leftCat = leftCategories[i];
-        const display = getScoreLine(leftCat);
-        line += `${theme.score.label(leftCat.padEnd(7))}: ${display}`;
-      } else if (i === leftCategories.length) {
+      const leftItem = leftRows[i];
+      if (leftItem === null || i >= leftRows.length) {
+        line += " ".repeat(leftWidth);
+      } else if (leftItem === "sum") {
         line += `${theme.score.label("sum".padEnd(7))}: ${upperSumsDisplay}`;
-      } else if (i === leftCategories.length + 1) {
+      } else if (leftItem === "bonus") {
         line += `${theme.score.label("bonus".padEnd(7))}: ${bonusDisplay}`;
       } else {
-        line += " ".repeat(leftWidth);
+        const display = getScoreLine(leftItem);
+        line += `${theme.score.label(leftItem.padEnd(7))}: ${display}`;
       }
 
       line += theme.ui.border(" │ ");
 
       // Right Column
-      const rightCat = rightCategories[i];
-      if (rightCat) {
-        const display = getScoreLine(rightCat);
-        line += `${theme.score.label(rightCat.padEnd(14))}: ${display}`;
-      } else {
+      const rightItem = rightRows[i];
+      if (rightItem === null || i >= rightRows.length) {
         line += " ".repeat(rightWidth);
+      } else {
+        const display = getScoreLine(rightItem);
+        line += `${theme.score.label(rightItem.padEnd(14))}: ${display}`;
       }
       line += theme.ui.border(" │");
       console.log(line);
