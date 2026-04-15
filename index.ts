@@ -38,18 +38,25 @@ async function printGameState(state: GameState) {
     const getScoreLine = (cat: Category) => {
       const potential = calculateScore(state.dice, cat);
       return state.players.map((p, i) => {
+        const isCurrent = i === state.currentPlayerIndex;
         let display = "";
+        let rawLength = 0;
+
         if (p.scorecard[cat] !== null) {
           display = theme.score.value(p.scorecard[cat]!.toString());
+          rawLength = p.scorecard[cat]!.toString().length;
+        } else if (isCurrent) {
+          if (p.isAI) {
+            display = "";
+            rawLength = 0;
+          } else {
+            display = theme.score.potential(`(${potential})`);
+            rawLength = `(${potential})`.length;
+          }
         } else {
-          display = i === state.currentPlayerIndex 
-            ? theme.score.potential(`(${potential})`) 
-            : theme.score.empty("·");
+          display = theme.score.empty("·");
+          rawLength = 1;
         }
-        // Manual padding because ANSI strings have invisible length
-        const rawLength = p.scorecard[cat] !== null 
-          ? p.scorecard[cat]!.toString().length 
-          : (i === state.currentPlayerIndex ? `(${potential})`.length : 1);
         
         return display + " ".repeat(playerColumnWidth - rawLength);
       }).join("");
@@ -148,32 +155,58 @@ async function main() {
   state = reducer(state, { type: "START_GAME", playerNames });
 
   while (state.phase !== "GAME_OVER") {
-    await printGameState(state);
     const currentPlayer = state.players[state.currentPlayerIndex];
-    const rollNum = 3 - state.rollsLeft;
-    
-    // Draw visual dice
-    const diceRows = ["", "", "", "", ""]; // top, mid, bot, labels
-    state.dice.forEach((d, i) => {
-      const isKept = state.kept[i];
-      const t = isKept ? theme.dice.kept : theme.dice.default;
-      const face = DICE_FACES[d as keyof typeof DICE_FACES];
-      
-      diceRows[0] += t(isKept ? " ╭[KEEP]─╮ " : " ╭───────╮ ") + " ";
-      diceRows[1] += t(` │ ${face[0]} │ `) + " ";
-      diceRows[2] += t(` │ ${face[1]} │ `) + " ";
-      diceRows[3] += t(` │ ${face[2]} │ `) + " ";
-      diceRows[4] += t(` ╰───────╯ `) + " ";
-
-    });
 
     if (currentPlayer.isAI) {
-      console.log(`${theme.ui.fg(currentPlayer.name)}, Roll ${rollNum}:`);
-      diceRows.forEach(row => console.log(row));
-      await new Promise(r => setTimeout(r, 1000)); // Pause for AI "thinking"
-      const action = getAIAction(state);
-      state = reducer(state, action);
+      await printGameState(state);
+      while (state.players[state.currentPlayerIndex] === currentPlayer && state.phase !== "GAME_OVER") {
+        const rollNum = 3 - state.rollsLeft;
+        const action = getAIAction(state);
+        
+        if (action.type === "TOGGLE_KEEPER") {
+          state = reducer(state, action);
+          continue;
+        }
+
+        console.log(`${theme.ui.fg(currentPlayer.name)}, Roll ${rollNum}:`);
+        const isLastRoll = action.type === "SCORE_CATEGORY";
+        const diceToPrint = state.dice;
+        const keptToPrint = isLastRoll ? [false, false, false, false, false] : state.kept;
+
+        const diceRows = ["", "", "", "", ""];
+        diceToPrint.forEach((d, i) => {
+          const isKept = keptToPrint[i];
+          const t = isKept ? theme.dice.kept : theme.dice.default;
+          const face = DICE_FACES[d as keyof typeof DICE_FACES];
+          diceRows[0] += t(isKept ? " ╭[KEEP]─╮ " : " ╭───────╮ ") + " ";
+          diceRows[1] += t(` │ ${face[0]} │ `) + " ";
+          diceRows[2] += t(` │ ${face[1]} │ `) + " ";
+          diceRows[3] += t(` │ ${face[2]} │ `) + " ";
+          diceRows[4] += t(` ╰───────╯ `) + " ";
+        });
+        diceRows.forEach(row => console.log(row));
+        
+        state = reducer(state, action);
+      }
     } else {
+      await printGameState(state);
+      const rollNum = 3 - state.rollsLeft;
+      
+      // Draw visual dice
+      const diceRows = ["", "", "", "", ""]; // top, mid, bot, labels
+      state.dice.forEach((d, i) => {
+        const isKept = state.kept[i];
+        const t = isKept ? theme.dice.kept : theme.dice.default;
+        const face = DICE_FACES[d as keyof typeof DICE_FACES];
+        
+        diceRows[0] += t(isKept ? " ╭[KEEP]─╮ " : " ╭───────╮ ") + " ";
+        diceRows[1] += t(` │ ${face[0]} │ `) + " ";
+        diceRows[2] += t(` │ ${face[1]} │ `) + " ";
+        diceRows[3] += t(` │ ${face[2]} │ `) + " ";
+        diceRows[4] += t(` ╰───────╯ `) + " ";
+
+      });
+
       while (true) {
         console.log(`${theme.ui.current(currentPlayer.name)}, Roll ${rollNum}:`);
         diceRows.forEach(row => console.log(row));
