@@ -147,7 +147,7 @@ async function main() {
       const t = isKept ? theme.dice.kept : theme.dice.default;
       const face = DICE_FACES[d as keyof typeof DICE_FACES];
       
-      diceRows[0] += t(" ╭───────╮ ") + " ";
+      diceRows[0] += t(isKept ? " ╭[KEEP]─╮ " : " ╭───────╮ ") + " ";
       diceRows[1] += t(` │ ${face[0]} │ `) + " ";
       diceRows[2] += t(` │ ${face[1]} │ `) + " ";
       diceRows[3] += t(` │ ${face[2]} │ `) + " ";
