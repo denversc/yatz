@@ -177,7 +177,8 @@ async function main() {
           continue;
         }
 
-        console.log(`${theme.ui.fg(currentPlayer.name)}, Roll ${rollNum}:`);
+        const turnNum = Object.values(currentPlayer.scorecard).filter(v => v !== null).length + 1;
+        console.log(`${theme.ui.fg(currentPlayer.name)}, Turn ${turnNum}, Roll ${rollNum}:`);
         const isLastRoll = action.type === "SCORE_CATEGORY";
         const diceToPrint = state.dice;
         const keptToPrint = isLastRoll ? [false, false, false, false, false] : state.kept;
@@ -197,7 +198,8 @@ async function main() {
         
         if (action.type === "SCORE_CATEGORY") {
           const points = calculateScore(state.dice, action.category);
-          console.log(`${currentPlayer.name} scored ${points} points in ${action.category}`);
+          const rollsUsed = 3 - state.rollsLeft;
+          console.log(`${currentPlayer.name} scored ${points} points in ${action.category} after ${rollsUsed} roll${rollsUsed > 1 ? "s" : ""}`);
         }
         
         state = reducer(state, action);
@@ -221,8 +223,9 @@ async function main() {
 
       });
 
+      const turnNum = Object.values(currentPlayer.scorecard).filter(v => v !== null).length + 1;
       while (true) {
-        console.log(`${theme.ui.current(currentPlayer.name)}, Roll ${rollNum}:`);
+        console.log(`${theme.ui.current(currentPlayer.name)}, Turn ${turnNum}, Roll ${rollNum}:`);
         diceRows.forEach(row => console.log(row));
         const promptText = ` >`;
         const rawInput = (prompt(promptText) || "").trim();
@@ -403,7 +406,8 @@ async function main() {
           }
 
           const points = calculateScore(state.dice, actualCategory);
-          console.log(`${currentPlayer.name} scored ${points} points in ${actualCategory}`);
+          const rollsUsed = 3 - state.rollsLeft;
+          console.log(`${currentPlayer.name} scored ${points} points in ${actualCategory} after ${rollsUsed} roll${rollsUsed > 1 ? "s" : ""}`);
 
           state = reducer(state, { type: "SCORE_CATEGORY", category: actualCategory });
           break;
