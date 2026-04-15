@@ -305,6 +305,15 @@ function getLoopColor(i: number, total: number, startHex: string, midHex: string
   
   return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 }
+function safePrompt(message: string): string {
+  const result = prompt(message);
+  if (result === null) {
+    console.error("\nError: End of input reached.");
+    process.exit(1);
+  }
+  return result;
+}
+
 async function main() {
   parseAndHandleArgs();
 
@@ -340,7 +349,7 @@ async function main() {
   const playerNames: { name: string; isAI: boolean }[] = [];
 
   while (true) {
-    const input = (prompt("Enter the players (? for help):") || "").toLowerCase().trim();
+    const input = safePrompt("Enter the players (? for help):").toLowerCase().trim();
 
     if (input === "?") {
       console.log("\nEnter a string where each character represents a player:");
@@ -448,7 +457,7 @@ async function main() {
         console.log(`${theme.ui.current(currentPlayer.name)}, Turn ${turnNum}, Roll ${rollNum}:`);
         diceRows.forEach(row => console.log(row));
         const promptText = ` >`;
-        const rawInput = (prompt(promptText) || "").trim();
+        const rawInput = safePrompt(promptText).trim();
         const input = rawInput.toLowerCase();
 
         if (input === "?") {
@@ -474,7 +483,7 @@ async function main() {
         }
 
         if (input === "q") {
-          const confirmQuit = (prompt("Do you really want to quit (y/n)?") || "n").toLowerCase().trim();
+          const confirmQuit = safePrompt("Do you really want to quit (y/n)?").toLowerCase().trim() || "n";
           if (confirmQuit === "y") {
             process.exit(0);
           }
