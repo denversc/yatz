@@ -5,6 +5,7 @@ import type { Theme } from "./src/theme";
 import type { Action, Category, GameState, Player } from "./src/types";
 import { CATEGORY_NAMES, CATEGORY_ICONS } from "./src/types";
 import { Ansis } from "ansis";
+import { createInterface as createReadlineInterface, type Interface as ReadlineInterface } from "node:readline/promises";
 
 let state = INITIAL_STATE;
 
@@ -303,13 +304,14 @@ function getLoopColor(i: number, total: number, startHex: string, midHex: string
   
   return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 }
-function safePrompt(message: string): string {
-  const result = prompt(message);
-  if (result === null) {
-    console.error("\nError: End of input reached.");
+
+async function safePrompt(rl: ReadlineInterface, message: string): Promise<string> {
+  try {
+    return await rl.question(message);
+  } catch (e: unknown) {
+    console.error("\nError reading input:", e);
     process.exit(1);
   }
-  return result;
 }
 
 function printRollMessage(state: GameState, playerName: string, theme: Theme) {
@@ -330,6 +332,7 @@ function printRollMessage(state: GameState, playerName: string, theme: Theme) {
 async function main() {
   const theme = parseAndHandleArgs();
   const ansis = new Ansis(theme.level);
+  const rl = createReadlineInterface({ input: process.stdin, output: process.stdout, tabSize: 2 });
 
   // Setup players
   const welcomeText = " WELCOME TO YAHTZEE ";
@@ -363,7 +366,7 @@ async function main() {
   const playerNames: { name: string; isAI: boolean }[] = [];
 
   while (true) {
-    const input = safePrompt("Enter the players (? for help):").toLowerCase().trim();
+    const input = (await safePrompt(rl, "Enter the players (? for help): ")).toLowerCase().trim();
 
     if (input === "?") {
       console.log("\nEnter a string where each character represents a player:");
@@ -474,8 +477,8 @@ async function main() {
       while (true) {
         console.log(`${theme.ui.current(currentPlayer.name)}, Turn ${turnNum}, Roll ${rollNum}:`);
         diceRows.forEach(row => console.log(row));
-        const promptText = ` >`;
-        const rawInput = safePrompt(promptText).trim();
+        const promptText = ` > `;
+        const rawInput = (await safePrompt(rl, promptText)).trim();
         const input = rawInput.toLowerCase();
 
         if (input === "?") {
@@ -501,7 +504,7 @@ async function main() {
         }
 
         if (input === "q") {
-          const confirmQuit = safePrompt("Do you really want to quit (y/n)?").toLowerCase().trim() || "n";
+          const confirmQuit = (await safePrompt(rl, "Do you really want to quit (y/n)? ")).toLowerCase().trim() || "n";
           if (confirmQuit === "y") {
             process.exit(0);
           }
@@ -672,6 +675,7 @@ async function main() {
   }
 
   await printGameState(state, theme);
+  process.exit(0);
 }
 
 main();
