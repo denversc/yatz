@@ -98,16 +98,16 @@ describe("getAIAction", () => {
       ],
       currentPlayerIndex: 0,
       phase: "ROLLING",
-      dice: [1, 2, 6, 4, 1], // No lower section score > 0
+      dice: [1, 2, 3, 5, 6], // No pairs, no small straight
       rollsLeft: 2,
-    };
+      };
 
-    const action = getAIAction(state);
-    expect(action.type).toBe("ROLL_DICE");
-  });
+      const action = getAIAction(state);
+      expect(action.type).toBe("ROLL_DICE");
+      });
 
-  test("clears keepers if re-rolling with keepers set", () => {
-    const state: GameState = {
+      test("clears keepers if re-rolling with keepers set and no chase candidate", () => {
+      const state: GameState = {
       ...INITIAL_STATE,
       players: [
         {
@@ -119,10 +119,11 @@ describe("getAIAction", () => {
       ],
       currentPlayerIndex: 0,
       phase: "ROLLING",
-      dice: [1, 2, 6, 4, 1],
+      dice: [1, 2, 3, 5, 6],
       kept: [true, false, false, false, false],
       rollsLeft: 2,
-    };
+      };
+
 
     const action = getAIAction(state);
     expect(action.type).toBe("CLEAR_KEEPERS");
@@ -179,7 +180,7 @@ describe("getAIAction", () => {
     }
   });
 
-  test("picks 'ones' immediately if it is strong and others are unavailable", () => {
+  test("hunts for more 'ones' even if 'ones' is already strong", () => {
     const state: GameState = {
       ...INITIAL_STATE,
       players: [
@@ -189,7 +190,6 @@ describe("getAIAction", () => {
           isAI: true,
           scorecard: { 
             ...INITIAL_SCORECARD,
-            threeOfAKind: 20 // already scored
           },
         },
       ],
@@ -200,10 +200,7 @@ describe("getAIAction", () => {
     };
 
     const action = getAIAction(state);
-    expect(action.type).toBe("SCORE_CATEGORY");
-    if (action.type === "SCORE_CATEGORY") {
-      expect(action.category).toBe("ones");
-    }
+    expect(action.type).toBe("TOGGLE_KEEPER");
   });
 
   test("prefers fullHouse over strong sixes due to higher score", () => {

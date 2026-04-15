@@ -75,40 +75,67 @@ export function getAIAction(state: GameState): Action {
 
   const bestStrong = getBestStrong();
 
-  // 1. Special Case: Hunt for Large Straight if we have a Small Straight and rolls left
-  if (
-    state.phase === "ROLLING" &&
-    state.rollsLeft > 0 &&
-    scorecard["largeStraight"] === null &&
-    calculateScore(dice, "smallStraight") > 0 &&
-    bestStrong !== "largeStraight" &&
-    bestStrong !== "yahtzee"
-  ) {
-    const targetKept = getSmallStraightKept(dice);
-    if (targetKept) {
-      for (let i = 0; i < 5; i++) {
-        if (state.kept[i] !== targetKept[i]) {
-          return { type: "TOGGLE_KEEPER", index: i };
+  // 1. ROLLING Phase Strategy (with rolls left)
+  if (state.phase === "ROLLING" && state.rollsLeft > 0) {
+    // 1a. Always score immediate winners
+    if (bestStrong === "yahtzee" || bestStrong === "largeStraight" || bestStrong === "fullHouse") {
+      return { type: "SCORE_CATEGORY", category: bestStrong };
+    }
+
+    // 1b. Hunt for Large Straight if we have a Small Straight
+    if (scorecard["largeStraight"] === null && calculateScore(dice, "smallStraight") > 0) {
+      const targetKept = getSmallStraightKept(dice);
+      if (targetKept) {
+        for (let i = 0; i < 5; i++) {
+          if (state.kept[i] !== targetKept[i]) return { type: "TOGGLE_KEEPER", index: i };
         }
+        return { type: "ROLL_DICE" };
+      }
+    }
+
+    // 1c. Hunt or Chase Upper Section
+    // First, see if we have a strong upper category we'd want to improve
+    let targetUpper: Category | null = null;
+    if (bestStrong && upperSection.includes(bestStrong)) {
+      targetUpper = bestStrong;
+    } else {
+      // Otherwise, find the best available upper category to "chase" (>= 2 dice)
+      let maxCount = 1;
+      for (const cat of upperSection) {
+        if (scorecard[cat] === null) {
+          const val = upperSection.indexOf(cat) + 1;
+          const count = dice.filter(d => d === val).length;
+          if (count > maxCount) {
+            maxCount = count;
+            targetUpper = cat;
+          } else if (count === maxCount && count >= 2 && targetUpper) {
+            // Tie-break: higher value
+            if (val > upperSection.indexOf(targetUpper) + 1) targetUpper = cat;
+          }
+        }
+      }
+    }
+
+    if (targetUpper) {
+      const val = upperSection.indexOf(targetUpper) + 1;
+      const targetKept = dice.map(d => d === val);
+      for (let i = 0; i < 5; i++) {
+        if (state.kept[i] !== targetKept[i]) return { type: "TOGGLE_KEEPER", index: i };
       }
       return { type: "ROLL_DICE" };
     }
-  }
 
-  // 2. Skip re-roll and score immediately if any "Strong" category is found
-  if (bestStrong !== null) {
-    return { type: "SCORE_CATEGORY", category: bestStrong };
-  }
-
-  // 2. Re-roll if possible (ALWAYS re-roll if no strong category found)
-  if (state.phase === "ROLLING" && state.rollsLeft > 0) {
-    if (state.kept.some(k => k)) {
-      return { type: "CLEAR_KEEPERS" };
+    // 1d. If we have any other strong category (like 3-of-a-kind), score it
+    if (bestStrong !== null) {
+      return { type: "SCORE_CATEGORY", category: bestStrong };
     }
+
+    // 1e. Default: Clear and roll all
+    if (state.kept.some(k => k)) return { type: "CLEAR_KEEPERS" };
     return { type: "ROLL_DICE" };
   }
 
-  // 3. Final Scoring Logic (Final roll or no strong points found)
+  // 2. SCORING Phase Strategy (Final roll or decided to score)
 
   // 3a. Best strong (already checked, but for completeness in SCORING phase)
   if (bestStrong !== null) {
