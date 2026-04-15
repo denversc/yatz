@@ -1,5 +1,6 @@
 import { INITIAL_STATE, reducer, calculateScore } from "./src/reducer";
 import { getAIAction } from "./src/ai";
+import { parseAndHandleArgs } from "./src/args";
 import type { Action, Category, GameState, Player } from "./src/types";
 
 let state = INITIAL_STATE;
@@ -79,6 +80,8 @@ async function printGameState(state: GameState) {
 }
 
 async function main() {
+  parseAndHandleArgs();
+
   // Setup players
   console.log("Welcome to Yahtzee!");
   const numPlayers = parseInt(prompt("Number of players (1-4)?") || "1");
