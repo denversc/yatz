@@ -74,14 +74,14 @@ describe("getAIAction", () => {
       ],
       currentPlayerIndex: 0,
       phase: "ROLLING",
-      dice: [1, 2, 3, 4, 1], // Small Straight (30)
+      dice: [2, 2, 3, 3, 3], // Full House (25)
       rollsLeft: 2,
     };
 
     const action = getAIAction(state);
     expect(action.type).toBe("SCORE_CATEGORY");
     if (action.type === "SCORE_CATEGORY") {
-      expect(action.category).toBe("smallStraight");
+      expect(action.category).toBe("fullHouse");
     }
   });
 

@@ -29,6 +29,25 @@ function isStrong(cat: Category, score: number): boolean {
   return score > 0;
 }
 
+function getSmallStraightKept(dice: number[]): boolean[] | null {
+  const possibleStraights = [[1, 2, 3, 4], [2, 3, 4, 5], [3, 4, 5, 6]];
+  for (const straight of possibleStraights) {
+    const kept = [false, false, false, false, false];
+    const foundIndices = new Set<number>();
+    let matchCount = 0;
+    for (const val of straight) {
+      const idx = dice.findIndex((d, i) => d === val && !foundIndices.has(i));
+      if (idx !== -1) {
+        foundIndices.add(idx);
+        kept[idx] = true;
+        matchCount++;
+      }
+    }
+    if (matchCount === 4) return kept;
+  }
+  return null;
+}
+
 export function getAIAction(state: GameState): Action {
   const player = state.players[state.currentPlayerIndex];
   const dice = state.dice;
@@ -56,7 +75,27 @@ export function getAIAction(state: GameState): Action {
 
   const bestStrong = getBestStrong();
 
-  // 1. Skip re-roll and score immediately if any "Strong" category is found
+  // 1. Special Case: Hunt for Large Straight if we have a Small Straight and rolls left
+  if (
+    state.phase === "ROLLING" &&
+    state.rollsLeft > 0 &&
+    scorecard["largeStraight"] === null &&
+    calculateScore(dice, "smallStraight") > 0 &&
+    bestStrong !== "largeStraight" &&
+    bestStrong !== "yahtzee"
+  ) {
+    const targetKept = getSmallStraightKept(dice);
+    if (targetKept) {
+      for (let i = 0; i < 5; i++) {
+        if (state.kept[i] !== targetKept[i]) {
+          return { type: "TOGGLE_KEEPER", index: i };
+        }
+      }
+      return { type: "ROLL_DICE" };
+    }
+  }
+
+  // 2. Skip re-roll and score immediately if any "Strong" category is found
   if (bestStrong !== null) {
     return { type: "SCORE_CATEGORY", category: bestStrong };
   }
