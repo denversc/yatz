@@ -123,7 +123,19 @@ async function main() {
   playerNames.push({ name: `Player ${humanCount}`, isAI: false });
 
   for (let i = 1; i < numPlayers; i++) {
-    const isAI = (prompt(`Is Player ${i + 1} an AI (y/n)?`) || "n").toLowerCase() === "y";
+    let isAI = false;
+    while (true) {
+      const choice = (prompt(`Is Player ${i + 1} a (h) human or an (a) AI?`) || "").toLowerCase().trim();
+      if (choice === "a") {
+        isAI = true;
+        break;
+      } else if (choice === "h") {
+        isAI = false;
+        break;
+      }
+      console.log(theme.ui.error("Error: Please enter 'h' for human or 'a' for AI."));
+    }
+
     if (isAI) {
       aiCount++;
       playerNames.push({ name: `AI ${aiCount}`, isAI: true });
