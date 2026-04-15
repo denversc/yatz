@@ -166,15 +166,17 @@ async function main() {
         console.log(`${theme.ui.current(currentPlayer.name)}, Roll ${rollNum}:`);
         diceRows.forEach(row => console.log(row));
         const promptText = ` >`;
-        const input = (prompt(promptText) || "").toLowerCase().trim();
+        const rawInput = (prompt(promptText) || "").trim();
+        const input = rawInput.toLowerCase();
 
         if (input === "?") {
           console.log(`\n${theme.ui.header("Commands:")}`);
           if (state.phase === "ROLLING") {
             console.log("  a       : roll all (clears keepers)");
             console.log("  r, ENTER: roll (keeps current keepers)");
-            console.log("  k[1-5]  : keep specified dice and roll (e.g. k125)");
-            console.log("  k[a-g]  : keep using home row (a=1, s=2, d=3, f=4, g=5)");
+            console.log("  k[1-5]  : toggle specified dice and roll (e.g. k125)");
+            console.log("  K[1-5]  : keep ONLY specified dice and roll (e.g. K125)");
+            console.log("  k[a-g]  : toggle using home row (a=1, s=2, d=3, f=4, g=5)");
             console.log("  d[1-5]  : discard specified dice and roll (keeps others)");
             console.log("  s[cat]  : score in category (e.g. sfh, s 1)");
             console.log("            Shortcuts: 1-6, 3k, 4k, fh, ss, ls, y, c");
@@ -192,6 +194,40 @@ async function main() {
           state = reducer(state, { type: "ROLL_DICE" });
           break;
         } else if ((input === "r" || input === "") && state.phase === "ROLLING") {
+          state = reducer(state, { type: "ROLL_DICE" });
+          break;
+        } else if (rawInput.startsWith("K") && state.phase === "ROLLING") {
+          const content = input.slice(1).replace(/\s/g, "");
+          const mapping: Record<string, number> = {
+            '1': 0, '2': 1, '3': 2, '4': 3, '5': 4,
+            'a': 0, 's': 1, 'd': 2, 'f': 3, 'g': 4
+          };
+
+          if (content.length === 0) {
+            console.log(theme.ui.error("Error: Please specify dice to keep (e.g., K123 or Kasd)."));
+            continue;
+          }
+
+          let hasInvalidChar = false;
+          const keepIndices = new Set<number>();
+          for (const char of content) {
+            if (!(char in mapping)) {
+              hasInvalidChar = true;
+              break;
+            }
+            keepIndices.add(mapping[char]);
+          }
+
+          if (hasInvalidChar) {
+            console.log(theme.ui.error("Error: Invalid dice index. Use 1-5 or a,s,d,f,g."));
+            continue;
+          }
+
+          state = reducer(state, { type: "CLEAR_KEEPERS" });
+          for (const index of keepIndices) {
+            state = reducer(state, { type: "TOGGLE_KEEPER", index });
+          }
+
           state = reducer(state, { type: "ROLL_DICE" });
           break;
         } else if (input.startsWith("k") && state.phase === "ROLLING") {
