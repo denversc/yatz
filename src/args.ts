@@ -24,9 +24,9 @@ export function parseAndHandleArgs() {
     }
 
     if (values.color) {
-      if (!["yes", "no", "auto"].includes(values.color)) {
+      if (!["yes", "no", "auto", "16", "256"].includes(values.color)) {
         console.error(`Error: Invalid value for --color: "${values.color}".`);
-        console.error("Valid values are: yes, no, auto.");
+        console.error("Valid values are: yes, no, auto, 16, 256.");
         console.error("Run with --help for help.");
         process.exit(2);
       }
@@ -35,6 +35,10 @@ export function parseAndHandleArgs() {
         updateTheme(3);
       } else if (values.color === "no") {
         updateTheme(0);
+      } else if (values.color === "16") {
+        updateTheme(1);
+      } else if (values.color === "256") {
+        updateTheme(2);
       }
       // 'auto' is handled by the default creation in theme.ts
     }
@@ -62,6 +66,6 @@ Usage: yatz [options]
 
 Options:
   -h, --help           Show this help screen
-  --color <value>      Use colors in output: yes, no, auto (default: auto)
+  --color <value>      Use colors in output: yes, no, auto, 16, 256 (default: auto)
 `);
 }
