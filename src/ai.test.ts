@@ -254,4 +254,148 @@ describe("getAIAction", () => {
       expect(action.category).toBe("sixes"); // Tie-break: sixes=30 vs fourOfAKind=30. sixes wins.
     }
   });
+
+  describe("Aggressive AI last category", () => {
+    test("re-rolls 'twos' even if strong (3 dice) when it's the last category", () => {
+      const state: GameState = {
+        ...INITIAL_STATE,
+        players: [
+          {
+            id: "0",
+            name: "AI",
+            isAI: true,
+            scorecard: { 
+              ...INITIAL_SCORECARD,
+              ones: 3, threes: 9, fours: 12, fives: 15, sixes: 18,
+              threeOfAKind: 20, fourOfAKind: 20, fullHouse: 25,
+              smallStraight: 30, largeStraight: 40, yahtzee: 50, chance: 20
+            }, // Only 'twos' is null
+          },
+        ],
+        currentPlayerIndex: 0,
+        phase: "ROLLING",
+        dice: [2, 2, 2, 1, 1],
+        rollsLeft: 2,
+      };
+
+      const action = getAIAction(state);
+      expect(action.type).toBe("TOGGLE_KEEPER");
+    });
+
+    test("hunts for 'yahtzee' by keeping most common dice when it's the last category", () => {
+      const state: GameState = {
+        ...INITIAL_STATE,
+        players: [
+          {
+            id: "0",
+            name: "AI",
+            isAI: true,
+            scorecard: { 
+              ...INITIAL_SCORECARD,
+              ones: 3, twos: 6, threes: 9, fours: 12, fives: 15, sixes: 18,
+              threeOfAKind: 20, fourOfAKind: 20, fullHouse: 25,
+              smallStraight: 30, largeStraight: 40, chance: 20
+            }, // Only 'yahtzee' is null
+          },
+        ],
+        currentPlayerIndex: 0,
+        phase: "ROLLING",
+        dice: [6, 6, 6, 1, 2],
+        rollsLeft: 2,
+      };
+
+      const action = getAIAction(state);
+      expect(action.type).toBe("TOGGLE_KEEPER");
+      if (action.type === "TOGGLE_KEEPER") {
+          expect([0, 1, 2]).toContain(action.index);
+      }
+    });
+
+    test("hunts for '3-of-a-kind' by keeping most common and breaking ties with highest value", () => {
+      const state: GameState = {
+        ...INITIAL_STATE,
+        players: [
+          {
+            id: "0",
+            name: "AI",
+            isAI: true,
+            scorecard: { 
+              ...INITIAL_SCORECARD,
+              ones: 3, twos: 6, threes: 9, fours: 12, fives: 15, sixes: 18,
+              fourOfAKind: 20, fullHouse: 25, smallStraight: 30, largeStraight: 40,
+              yahtzee: 50, chance: 20
+            }, // Only 'threeOfAKind' is null
+          },
+        ],
+        currentPlayerIndex: 0,
+        phase: "ROLLING",
+        dice: [2, 2, 5, 5, 1],
+        rollsLeft: 2,
+      };
+
+      const action = getAIAction(state);
+      expect(action.type).toBe("TOGGLE_KEEPER");
+      if (action.type === "TOGGLE_KEEPER") {
+          expect([2, 3]).toContain(action.index);
+      }
+    });
+
+    test("hunts for 'smallStraight' prioritizing open-ended (2,3 start)", () => {
+      const state: GameState = {
+        ...INITIAL_STATE,
+        players: [
+          {
+            id: "0",
+            name: "AI",
+            isAI: true,
+            scorecard: { 
+              ...INITIAL_SCORECARD,
+              ones: 3, twos: 6, threes: 9, fours: 12, fives: 15, sixes: 18,
+              threeOfAKind: 20, fourOfAKind: 20, fullHouse: 25,
+              largeStraight: 40, yahtzee: 50, chance: 20
+            }, // Only 'smallStraight' is null
+          },
+        ],
+        currentPlayerIndex: 0,
+        phase: "ROLLING",
+        dice: [1, 2, 3, 5, 6],
+        rollsLeft: 2,
+      };
+
+      const action = getAIAction(state);
+      expect(action.type).toBe("TOGGLE_KEEPER");
+      if (action.type === "TOGGLE_KEEPER") {
+          expect(action.index).not.toBe(0); 
+      }
+    });
+
+    test("hunts for 'largeStraight' prioritizing open-ended (2 start)", () => {
+      const state: GameState = {
+        ...INITIAL_STATE,
+        players: [
+          {
+            id: "0",
+            name: "AI",
+            isAI: true,
+            scorecard: { 
+              ...INITIAL_SCORECARD,
+              ones: 3, twos: 6, threes: 9, fours: 12, fives: 15, sixes: 18,
+              threeOfAKind: 20, fourOfAKind: 20, fullHouse: 25,
+              smallStraight: 30, yahtzee: 50, chance: 20
+            }, // Only 'largeStraight' is null
+          },
+        ],
+        currentPlayerIndex: 0,
+        phase: "ROLLING",
+        dice: [1, 2, 3, 4, 6],
+        rollsLeft: 2,
+      };
+
+      const action = getAIAction(state);
+      expect(action.type).toBe("TOGGLE_KEEPER");
+      if (action.type === "TOGGLE_KEEPER") {
+          expect(action.index).not.toBe(0);
+      }
+    });
+  });
 });
