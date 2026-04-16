@@ -540,10 +540,10 @@ async function main() {
             console.log("  rr      : roll all (clears keepers)");
             console.log("  r, ENTER: roll (keeps current keepers)");
             console.log("  k[1-5]  : toggle specified dice and roll (e.g. k125)");
-            console.log("  K[1-5]  : keep ONLY specified dice and roll (e.g. K125)");
+            console.log("  k![1-5] : keep ONLY specified dice and roll (e.g. k!125)");
             console.log("  k[a-g]  : toggle using home row (a=1, s=2, d=3, f=4, g=5)");
             console.log("  [a-g]   : shortcut for k[a-g] (e.g. asf)");
-            console.log("  [A-G]   : shortcut for K[a-g] (e.g. ASF)");
+            console.log("  [A-G]   : shortcut for k![a-g] (e.g. ASF)");
             console.log("  d[1-5]  : discard specified dice and roll (keeps others)");
           }
           console.log("  s[cat]  : score in category (e.g. s1, sfh, syahtzee)");
@@ -576,15 +576,15 @@ async function main() {
           printRollMessage(state, currentPlayer.name, theme);
           state = reducer(state, { type: "ROLL_DICE" });
           break;
-        } else if (rawInput.startsWith("K") && state.phase === "ROLLING") {
-          const content = input.slice(1).replace(/\s/g, "");
+        } else if (input.startsWith("k!") && state.phase === "ROLLING") {
+          const content = input.slice(2).replace(/\s/g, "");
           const mapping: Record<string, number> = {
             '1': 0, '2': 1, '3': 2, '4': 3, '5': 4,
             'a': 0, 's': 1, 'd': 2, 'f': 3, 'g': 4
           };
 
           if (content.length === 0) {
-            console.log(theme.ui.error("Error: Please specify dice to keep (e.g., K123 or Kasd)."));
+            console.log(theme.ui.error("Error: Please specify dice to keep (e.g., k!123 or k!asd)."));
             continue;
           }
 
@@ -702,7 +702,7 @@ async function main() {
           state = reducer(state, { type: "ROLL_DICE" });
           break;
         } else if (/^[1-6]$/.test(input)) {
-          console.log(theme.ui.error(`Error: Lone number "${input}" is ambiguous. Use "k${input}" to toggle, "K${input}" to keep only, or "s${input}" to score.`));
+          console.log(theme.ui.error(`Error: Lone number "${input}" is ambiguous. Use "k${input}" to toggle, "k!${input}" to keep only, or "s${input}" to score.`));
           continue;
         } else if (input.startsWith("s") || SCORING_COMMANDS[input] || (state.phase === "SCORING" && input !== "")) {
           let categoryInput = (SCORING_COMMANDS[input] || input).toLowerCase();
