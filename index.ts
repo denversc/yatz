@@ -546,8 +546,9 @@ async function main() {
             console.log("  [A-G]   : shortcut for K[a-g] (e.g. ASF)");
             console.log("  d[1-5]  : discard specified dice and roll (keeps others)");
           }
-          console.log("  [cat]   : score in category (e.g. 1, fh, yahtzee)");
-          console.log("            Shortcuts: 1-6, 3k, 4k, fh, sm, lg, ya, ch");
+          console.log("  s[cat]  : score in category (e.g. s1, sfh, syahtzee)");
+          console.log("  [cat]   : score (non-numeric categories only, e.g. fh, ya)");
+          console.log("            Shortcuts: s1-s6, 3k, 4k, fh, sm, lg, ya, ch");
           console.log("  q       : quit (with confirmation)");
           console.log("  q!      : quit immediately");
           console.log("");
@@ -700,8 +701,16 @@ async function main() {
           printRollMessage(state, currentPlayer.name, theme);
           state = reducer(state, { type: "ROLL_DICE" });
           break;
-        } else if (SCORING_COMMANDS[input] || (state.phase === "SCORING" && input !== "")) {
-          const categoryInput = (SCORING_COMMANDS[input] || input).toLowerCase();
+        } else if (/^[1-6]$/.test(input)) {
+          console.log(theme.ui.error(`Error: Lone number "${input}" is ambiguous. Use "k${input}" to toggle, "K${input}" to keep only, or "s${input}" to score.`));
+          continue;
+        } else if (input.startsWith("s") || SCORING_COMMANDS[input] || (state.phase === "SCORING" && input !== "")) {
+          let lookup = input;
+          if (input.startsWith("s") && input.length > 1) {
+            lookup = input.slice(1).trim();
+          }
+          
+          const categoryInput = (SCORING_COMMANDS[lookup] || lookup).toLowerCase();
 
           const actualCategory = (Object.keys(currentPlayer.scorecard) as Category[]).find(
             cat => cat.toLowerCase() === categoryInput
