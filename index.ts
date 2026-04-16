@@ -705,16 +705,19 @@ async function main() {
           console.log(theme.ui.error(`Error: Lone number "${input}" is ambiguous. Use "k${input}" to toggle, "K${input}" to keep only, or "s${input}" to score.`));
           continue;
         } else if (input.startsWith("s") || SCORING_COMMANDS[input] || (state.phase === "SCORING" && input !== "")) {
-          let lookup = input;
-          if (input.startsWith("s") && input.length > 1) {
-            lookup = input.slice(1).trim();
-          }
-          
-          const categoryInput = (SCORING_COMMANDS[lookup] || lookup).toLowerCase();
+          let categoryInput = (SCORING_COMMANDS[input] || input).toLowerCase();
 
-          const actualCategory = (Object.keys(currentPlayer.scorecard) as Category[]).find(
+          let actualCategory = (Object.keys(currentPlayer.scorecard) as Category[]).find(
             cat => cat.toLowerCase() === categoryInput
           );
+
+          if (!actualCategory && input.startsWith("s") && input.length > 1) {
+            const stripped = input.slice(1).trim();
+            categoryInput = (SCORING_COMMANDS[stripped] || stripped).toLowerCase();
+            actualCategory = (Object.keys(currentPlayer.scorecard) as Category[]).find(
+              cat => cat.toLowerCase() === categoryInput
+            );
+          }
           
           if (!actualCategory) {
             const validCategories = Object.keys(currentPlayer.scorecard);
