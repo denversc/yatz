@@ -1,22 +1,12 @@
-import type { Action, Category, Scorecard, GameDice, GameState, GameDiceKeptFlags, GameDiceIndex } from "./types";
-import { currentPlayerFromGameState, randomGameDice, randomDieValue, cloneGameDiceKeptFlags } from "./types";
+import { type Category } from './yahtzee/category';
+import { emptyScorecard } from './yahtzee/scorecard';
+import { type Dice, randomDice, type DiceIndex } from './yahtzee/dice';
+import { GameState, allFalseGameStateKeptFlags, type GameStateKeptFlags } from './yahtzee/game_state';
+import { type PlayerAction } from './yahtzee/player_action';
+import { unreachable } from './util/unreachable';
+import { type Random } from './util/random';
 
-export const INITIAL_SCORECARD: Scorecard = {
-  ones: null, twos: null, threes: null, fours: null, fives: null, sixes: null,
-  threeOfAKind: null, fourOfAKind: null, fullHouse: null,
-  smallStraight: null, largeStraight: null, yahtzee: null, chance: null,
-};
-
-export const INITIAL_STATE: GameState = {
-  players: [],
-  currentPlayerIndex: 0,
-  phase: "START",
-  dice: [1, 1, 1, 1, 1],
-  kept: [false, false, false, false, false],
-  rollsLeft: 3,
-};
-
-export function calculateScore(dice: number[], category: Category): number {
+export function calculateScore(dice: Readonly<Dice>, category: Category): number {
   const counts = dice.reduce((acc, d) => {
     acc[d] = (acc[d] || 0) + 1;
     return acc;
@@ -48,82 +38,62 @@ export function calculateScore(dice: number[], category: Category): number {
   }
 }
 
-export function reducer(state: GameState, action: Action): GameState {
+export function reducer(state: GameState, action: PlayerAction, random: Random): GameState {
   switch (action.type) {
-    case "START_GAME":
-      return {
-        ...INITIAL_STATE,
-        players: action.playerNames.map((p, i) => ({
-          id: String(i),
-          name: p.name,
-          isAI: p.isAI,
-          scorecard: { ...INITIAL_SCORECARD },
-        })),
-        phase: "ROLLING",
-        dice: randomGameDice(),
-        rollsLeft: 2, // First roll just happened
-      };
-
-    case "ROLL_DICE":
-      if (state.phase !== "ROLLING" || state.rollsLeft === 0) return state;
+    case "RollDice":
       const newDice = rollDice(state.dice, state.kept);
       const newRollsLeft = state.rollsLeft - 1;
-      return {
-        ...state,
+      return state.withParameters({
         dice: newDice,
         rollsLeft: newRollsLeft,
         phase: newRollsLeft === 0 ? "SCORING" : "ROLLING",
-      };
+      });
 
-    case "TOGGLE_KEEPER":
-      if (state.phase !== "ROLLING") return state;
+    case "ToggleKeep":
       const newKept = toggleKept(state.kept, action.index);
-      return { ...state, kept: newKept };
+      return state.withParameters({
+        kept: newKept,
+      });
 
-    case "CLEAR_KEEPERS":
-      return { ...state, kept: [false, false, false, false, false] };
+    case "ClearKeeps":
+      return state.withParameters({
+        kept: allFalseGameStateKeptFlags,
+      });
 
-    case "SCORE_CATEGORY":
-      if (state.phase !== "ROLLING" && state.phase !== "SCORING") return state;
-      const player = currentPlayerFromGameState(state);
-      if (player.scorecard[action.category] !== null) return state;
-
+    case "ScoreDice":
       const score = calculateScore(state.dice, action.category);
-      const newPlayers = [...state.players];
-      newPlayers[state.currentPlayerIndex] = {
-        ...player,
-        scorecard: { ...player.scorecard, [action.category]: score },
-      };
-
+      const oldScorecard = state.scorecardForPlayer(state.currentPlayer)
+      const newScorecard = {...oldScorecard, [action.category]: score};
       const nextPlayerIndex = (state.currentPlayerIndex + 1) % state.players.length;
-      const isGameOver = nextPlayerIndex === 0 && Object.values(newPlayers[nextPlayerIndex]!.scorecard).every(v => v !== null);
 
-      return {
-        ...state,
-        players: newPlayers,
-        currentPlayerIndex: isGameOver ? state.currentPlayerIndex : nextPlayerIndex,
-        phase: isGameOver ? "GAME_OVER" : "ROLLING",
-        dice: randomGameDice(),
-        kept: [false, false, false, false, false],
+      return state.withParameters({
+        currentPlayerScorecard: newScorecard,
+        currentPlayerIndex: nextPlayerIndex,
+        phase: "ROLLING",
+        dice: randomDice(random),
+        kept: allFalseGameStateKeptFlags,
         rollsLeft: 2, // First roll of next turn just happened
-      };
-
-    case "RESTART_GAME":
-      return INITIAL_STATE;
+      });
 
     default:
-      return state;
+      unreachable(action);
   }
 }
 
-function rollDice(oldDice: Readonly<GameDice>, kept: Readonly<GameDiceKeptFlags>): GameDice {
-  return oldDice.map(
-    (dieValue, dieIndex) => kept[dieIndex] ? dieValue : randomDieValue()
-  ) as GameDice;
+function rollDice(oldDice: Readonly<Dice>, kept: Readonly<GameStateKeptFlags>, random: Random): Dice {
+  const newDice = randomDice(random);
+
+  kept.forEach((kept, index) => {
+    if (kept) {
+      newDice[index] = oldDice[index]!;
+    }
+  });
+
+  return newDice;
 }
 
-function toggleKept(oldKept: Readonly<GameDiceKeptFlags>, toggleIndex: GameDiceIndex): GameDiceKeptFlags {
-  const newKept = cloneGameDiceKeptFlags(oldKept);
+function toggleKept(oldKept: Readonly<GameStateKeptFlags>, toggleIndex: DiceIndex): GameStateKeptFlags {
+  const newKept = [...oldKept] as GameStateKeptFlags;
   newKept[toggleIndex] = !newKept[toggleIndex];
   return newKept;
 }

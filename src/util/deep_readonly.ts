@@ -1,6 +1,7 @@
 /**
- * A recursive version of TypeScript's built-in Readonly<T>.
- * Makes all properties of an object and its nested objects/arrays read-only.
+ * A recursive version of TypeScript's built-in `Readonly<T>`.
+ *
+ * Declares all properties of an object and its nested objects/arrays read-only, recursively.
  */
 export type DeepReadonly<T> = T extends Function
   ? T

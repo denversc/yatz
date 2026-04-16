@@ -1,13 +1,18 @@
-import { INITIAL_STATE, reducer, calculateScore } from "./src/reducer";
+import { reducer, calculateScore } from "./src/reducer";
+import { Random } from "./src/util/random";
 import { getAIAction } from "./src/ai";
 import { parseAndHandleArgs } from "./src/args";
 import type { Theme } from "./src/theme";
-import { type Action, type Category, type GameState, type Player, totalScoreFromScorecard, upperScoreFromScorecard, bonusScoreFromScorecard } from "./src/types";
-import { CATEGORY_NAMES, CATEGORY_ICONS } from "./src/types";
+import { GameState, MAX_ROLLS_LEFT, allFalseGameStateKeptFlags as allFalseKeptFlags  } from "./src/yahtzee/game_state";
+import { randomDice } from "./src/yahtzee/dice";
+import { StartGameAction } from "./src/yahtzee/player_action";
+import { emptyScorecard } from "./src/yahtzee/scorecard"
+import { calculateTotalScore, calculateUpperScore, calculateBonusScore, bonusScoreFromUpperScore, hasScoredUpperCategory, calculateLowerScore, countScoredLowerCategories } from "./src/yahtzee/scorecard";
+import { Player } from "./src/yahtzee/player";
+import { nameByCategory, iconByCategory, type Category, upperCategories } from "./src/yahtzee/category";
+import { unreachable } from "./src/util/unreachable";
 import { Ansis } from "ansis";
 import { createInterface as createReadlineInterface, type Interface as ReadlineInterface } from "node:readline/promises";
-
-let state = INITIAL_STATE;
 
 const DICE_FACES = {
   1: ["     ", "  ●  ", "     "],
@@ -35,13 +40,10 @@ const SCORING_COMMANDS: Record<string, Category> = {
 };
 
 async function printGameState(state: GameState, theme: Theme) {
+  const isGameOver = state.phase === "GAME_OVER";
+
   if (state.phase === "GAME_OVER") {
-    const winner = [...state.players].sort((a, b) => {
-      const scoreA = totalScoreFromScorecard(a.scorecard);
-      const scoreB = totalScoreFromScorecard(b.scorecard);
-      return scoreB - scoreA;
-    })[0];
-    const winScore = totalScoreFromScorecard(winner.scorecard);
+    const winner = calculateWinningPlayer(state);
     const info = theme.ui.dim(`${winner.name} wins!`);
     console.log(`\n${theme.ui.header(`≋≋≋≋≋≋≋≋≋≋≋≋ GAME OVER ❯ `)}${theme.ui.header(info)}${theme.ui.header(` ≋≋≋≋≋≋≋≋≋≋≋≋`)}`);
     
@@ -49,19 +51,17 @@ async function printGameState(state: GameState, theme: Theme) {
       const maxNameLen = Math.max(...state.players.map(p => p.name.length));
       const scoreLabelWidth = maxNameLen + 5;
       
-      const scoresLines = state.players.map(p => {
-        const total = totalScoreFromScorecard(p.scorecard);
-        const paddedName = p.name.padEnd(maxNameLen);
+      const scoresLines = state.players.map(player => {
+        const total = calculateTotalScoreForPlayer(state, player);
+        const paddedName = player.name.padEnd(maxNameLen);
         const paddedScore = total.toString().padStart(3);
         return { text: `${paddedName}: ${paddedScore}` };
       });
 
-      const rankedPlayers = [...state.players]
-        .map((p, i) => ({ p, score: totalScoreFromScorecard(p.scorecard) }))
-        .sort((a, b) => b.score - a.score);
-
-      const rankingsLines = rankedPlayers.map(({ p, score }) => {
-        const paddedName = p.name.padEnd(maxNameLen);
+      const rankedPlayers = playersSortedByTotalScoreDescending(state);
+      const rankingsLines = rankedPlayers.map(player => {
+        const paddedName = player.name.padEnd(maxNameLen);
+        const score = calculateTotalScoreForPlayer(state, player);
         const paddedScore = score.toString().padStart(3);
         return { text: `${paddedName}: ${paddedScore}` };
       });
@@ -72,15 +72,17 @@ async function printGameState(state: GameState, theme: Theme) {
       const rankingsHeader = theme.ui.underline("Final Rankings");
       console.log(`\n${scoresHeader}${rankingsHeader}`);
       for (let i = 0; i < scoresLines.length; i++) {
-        const sLine = scoresLines[i].text;
-        const rLine = rankingsLines[i].text;
+        const sLine = scoresLines[i]!.text;
+        const rLine = rankingsLines[i]!.text;
         const linePadding = Math.max(4, scoresHeaderStr.length + 4 - sLine.length);
         console.log(`${theme.ui.fg(sLine)}${" ".repeat(linePadding)}${theme.ui.fg(rLine)}`);
       }
     }
   } else {
-    const currentPlayer = state.players[state.currentPlayerIndex];
-    const turn = Object.values(currentPlayer.scorecard).filter(v => v !== null).length + 1;
+    const currentPlayer = getCurrentPlayer(state);
+    const currentPlayerScorecard = scorecardForPlayer(state, currentPlayer);
+    const isCurrentPlayer = (player: Player) => player === currentPlayer;
+    const turn = 1 + countScoredLowerCategories(currentPlayerScorecard);
     const roll = 3 - state.rollsLeft;
     if (roll === 1) {
       const info = theme.ui.dim(`${currentPlayer.name} ⋄ Turn ${turn}`);
@@ -91,28 +93,23 @@ async function printGameState(state: GameState, theme: Theme) {
       const maxNameLen = Math.max(...state.players.map(p => p.name.length));
       const scoreLabelWidth = maxNameLen + 7;
 
-      const scoresLines = state.players.map((p, i) => {
-        const isCurrent = i === state.currentPlayerIndex;
-        const total = totalScoreFromScorecard(p.scorecard);
-        const paddedName = p.name.padEnd(maxNameLen);
-        const paddedScore = total.toString().padStart(3);
-        return {
-          text: `${isCurrent ? "> " : "  "}${paddedName}: ${paddedScore}`,
-          isCurrent
-        };
+      const scoreTextByPlayer = new Map<Player, string>();
+      state.players.forEach(player => {
+        const paddedName = player.name.padEnd(maxNameLen);
+        const score = calculateTotalScoreForPlayer(state, player);
+        const paddedScore = score.toString().padStart(3);
+        const text = `${isCurrentPlayer(player) ? "> " : "  "}${paddedName}: ${paddedScore}`;
+        scoreTextByPlayer.set(player, text);
       });
 
-      const rankedPlayers = [...state.players]
-        .map((p, i) => ({ p, originalIndex: i, score: totalScoreFromScorecard(p.scorecard) }))
-        .sort((a, b) => b.score - a.score);
-
-      const rankingsLines = rankedPlayers.map(({ p, originalIndex, score }) => {
-        const isCurrent = originalIndex === state.currentPlayerIndex;
-        const paddedName = p.name.padEnd(maxNameLen);
+      const rankedPlayers = playersSortedByTotalScoreDescending(state);
+      const rankingsLines = rankedPlayers.map(player => {
+        const paddedName = player.name.padEnd(maxNameLen);
+        const score = calculateTotalScoreForPlayer(state, player);
         const paddedScore = score.toString().padStart(3);
         return {
-          text: `${isCurrent ? "> " : "  "}${paddedName}: ${paddedScore}`,
-          isCurrent
+          player,
+          text: `${isCurrentPlayer(player) ? "> " : "  "}${paddedName}: ${paddedScore}`,
         };
       });
 
@@ -129,25 +126,24 @@ async function printGameState(state: GameState, theme: Theme) {
     }
   }
 
-  const currentPlayer = state.players[state.currentPlayerIndex];
   if (state.phase !== "START") {
     console.log("");
     const CATEGORY_LABELS: Record<string, string> = {
-      ones: `${CATEGORY_ICONS.ones} ${CATEGORY_NAMES.ones}`,
-      twos: `${CATEGORY_ICONS.twos} ${CATEGORY_NAMES.twos}`,
-      threes: `${CATEGORY_ICONS.threes} ${CATEGORY_NAMES.threes}`,
-      fours: `${CATEGORY_ICONS.fours} ${CATEGORY_NAMES.fours}`,
-      fives: `${CATEGORY_ICONS.fives} ${CATEGORY_NAMES.fives}`,
-      sixes: `${CATEGORY_ICONS.sixes} ${CATEGORY_NAMES.sixes}`,
+      ones: `${iconByCategory.ones} ${nameByCategory.ones}`,
+      twos: `${iconByCategory.twos} ${nameByCategory.twos}`,
+      threes: `${iconByCategory.threes} ${nameByCategory.threes}`,
+      fours: `${iconByCategory.fours} ${nameByCategory.fours}`,
+      fives: `${iconByCategory.fives} ${nameByCategory.fives}`,
+      sixes: `${iconByCategory.sixes} ${nameByCategory.sixes}`,
       sum: "∑ sum",
       bonus: "✧ bonus",
-      threeOfAKind: `${CATEGORY_ICONS.threeOfAKind} ${CATEGORY_NAMES.threeOfAKind}`,
-      fourOfAKind: `${CATEGORY_ICONS.fourOfAKind} ${CATEGORY_NAMES.fourOfAKind}`,
-      fullHouse: `${CATEGORY_ICONS.fullHouse} ${CATEGORY_NAMES.fullHouse}`,
-      smallStraight: `${CATEGORY_ICONS.smallStraight} ${CATEGORY_NAMES.smallStraight}`,
-      largeStraight: `${CATEGORY_ICONS.largeStraight} ${CATEGORY_NAMES.largeStraight}`,
-      yahtzee: `${CATEGORY_ICONS.yahtzee} ${CATEGORY_NAMES.yahtzee}`,
-      chance: `${CATEGORY_ICONS.chance} ${CATEGORY_NAMES.chance}`,
+      threeOfAKind: `${iconByCategory.threeOfAKind} ${nameByCategory.threeOfAKind}`,
+      fourOfAKind: `${iconByCategory.fourOfAKind} ${nameByCategory.fourOfAKind}`,
+      fullHouse: `${iconByCategory.fullHouse} ${nameByCategory.fullHouse}`,
+      smallStraight: `${iconByCategory.smallStraight} ${nameByCategory.smallStraight}`,
+      largeStraight: `${iconByCategory.largeStraight} ${nameByCategory.largeStraight}`,
+      yahtzee: `${iconByCategory.yahtzee} ${nameByCategory.yahtzee}`,
+      chance: `${iconByCategory.chance} ${nameByCategory.chance}`,
     };
 
     const playerColumnWidth = 5;
@@ -157,27 +153,28 @@ async function printGameState(state: GameState, theme: Theme) {
 
     const getScoreLine = (cat: Category) => {
       const potential = calculateScore(state.dice, cat);
-      return state.players.map((p, i) => {
-        const isCurrent = i === state.currentPlayerIndex;
-        const isGameOver = state.phase === "GAME_OVER";
+      return state.players.map(player => {
+        const scorecard = scorecardForPlayer(state, player);
         let display = "";
         let rawLength = 0;
 
-        if (p.scorecard[cat] !== null) {
-          display = theme.score.value(p.scorecard[cat]!.toString());
-          if (!isCurrent && !isGameOver) display = theme.ui.dim(display);
-          rawLength = p.scorecard[cat]!.toString().length;
-        } else if (isCurrent && !isGameOver) {
-          if (p.isAI) {
+        if (scorecard[cat] !== null) {
+          display = theme.score.value(scorecard[cat]!.toString());
+          if (player !== currentPlayer && !isGameOver) display = theme.ui.dim(display);
+          rawLength = scorecard[cat]!.toString().length;
+        } else if (player === currentPlayer && !isGameOver) {
+          if (player.type === "ai") {
             display = "";
             rawLength = 0;
-          } else {
+          } else if (player.type === "human") {
             display = theme.score.potential(`(${potential})`);
             rawLength = `(${potential})`.length;
+          } else {
+            unreachable(player.type)
           }
         } else {
           display = theme.score.empty("·");
-          if (!isCurrent && !isGameOver) display = theme.ui.dim(display);
+          if (player !== currentPlayer && !isGameOver) display = theme.ui.dim(display);
           rawLength = 1;
         }
         
@@ -185,27 +182,30 @@ async function printGameState(state: GameState, theme: Theme) {
       }).join("");
     };
 
-    const upperCategories: Category[] = ["ones", "twos", "threes", "fours", "fives", "sixes"];
-    const hasAnyUpper = (p: Player) => upperCategories.some(cat => p.scorecard[cat] !== null);
-    const anyPlayerHasUpper = state.players.some(hasAnyUpper);
+    const anyPlayerHasUpper = state.players.some(
+      player => hasScoredUpperCategoryForPlayer(state, player)
+    );
 
-    const upperSumsDisplay = state.players.map((p, i) => {
-      const isCurrent = i === state.currentPlayerIndex;
-      const isGameOver = state.phase === "GAME_OVER";
-      if (!hasAnyUpper(p)) return " ".repeat(playerColumnWidth);
-      const sum = upperScoreFromScorecard(p.scorecard);
+    const upperSumsDisplay = state.players.map(player => {
+      const scorecard = scorecardForPlayer(state, player);
+      if (!hasScoredUpperCategory(scorecard)) {
+        return " ".repeat(playerColumnWidth);
+      }
+      const sum = calculateUpperScore(scorecard);
       let display = theme.score.sum(sum.toString());
-      if (!isCurrent && !isGameOver) display = theme.ui.dim(display);
+      if (player !== currentPlayer && !isGameOver) display = theme.ui.dim(display);
       return display + " ".repeat(playerColumnWidth - sum.toString().length);
     }).join("");
 
-    const bonusDisplay = state.players.map((p, i) => {
-      const isCurrent = i === state.currentPlayerIndex;
+    const bonusDisplay = state.players.map(player => {
+      const scorecard = scorecardForPlayer(state, player);
       const isGameOver = state.phase === "GAME_OVER";
-      if (!hasAnyUpper(p)) return " ".repeat(playerColumnWidth);
-      const bonus = bonusScoreFromScorecard(p.scorecard);
+      if (!hasScoredUpperCategory(scorecard)) {
+        return " ".repeat(playerColumnWidth);
+      }
+      const bonus = calculateBonusScore(scorecard);
       let display = bonus > 0 ? theme.score.value(bonus.toString()) : theme.score.sum(bonus.toString());
-      if (!isCurrent && !isGameOver) display = theme.ui.dim(display);
+      if (player !== currentPlayer && !isGameOver) display = theme.ui.dim(display);
       return display + " ".repeat(playerColumnWidth - bonus.toString().length);
     }).join("");
 
@@ -225,8 +225,7 @@ async function printGameState(state: GameState, theme: Theme) {
 
     const getStyledLabel = (key: string, width: number) => {
       const label = CATEGORY_LABELS[key] || key;
-      const isGameOver = state.phase === "GAME_OVER";
-      const isAvailable = key !== "sum" && key !== "bonus" && currentPlayer.scorecard[key as Category] === null;
+      const isAvailable = key !== "sum" && key !== "bonus" && currentPlayerScorecard[key as Category] === null;
       if (!isAvailable) {
         return (key === "sum" || key === "bonus" || isGameOver)
           ? theme.score.label(label.padEnd(width))
@@ -297,11 +296,11 @@ async function printGameState(state: GameState, theme: Theme) {
 
   if (state.phase === "GAME_OVER") {
     const winner = [...state.players].sort((a, b) => {
-      const scoreA = totalScoreFromScorecard(a.scorecard);
-      const scoreB = totalScoreFromScorecard(b.scorecard);
+      const scoreA = calculateTotalScore(a.scorecard);
+      const scoreB = calculateTotalScore(b.scorecard);
       return scoreB - scoreA;
     })[0];
-    const winScore = totalScoreFromScorecard(winner.scorecard);
+    const winScore = calculateTotalScore(winner.scorecard);
     console.log(theme.ui.current(`Winner: ${winner.name} with ${winScore} pts!`));
   }
 }
@@ -373,11 +372,7 @@ function printRollMessage(state: GameState, playerName: string, theme: Theme) {
   }
 }
 
-async function main() {
-  const theme = parseAndHandleArgs();
-  const ansis = new Ansis(theme.level);
-  const rl = createReadlineInterface({ input: process.stdin, output: process.stdout, tabSize: 2 });
-
+async function getPlayers(theme: Theme, ansis: Ansis, rl: ReadlineInterface): Promise<Player[]> {
   // Setup players
   const welcomeText = " WELCOME TO YAHTZEE ";
   const gradientText = getGradientText(welcomeText, theme.ui.gradient.header.start, theme.ui.gradient.header.end, ansis);
@@ -407,8 +402,6 @@ async function main() {
   bot += ansis.hex(getLoopColor(width + 3, L, start, end))("▟");
   console.log(bot);
 
-  const playerNames: { name: string; isAI: boolean }[] = [];
-
   while (true) {
     const input = (await safePrompt(rl, "Enter the players (? for help): ")).toLowerCase().trim();
 
@@ -417,97 +410,101 @@ async function main() {
       console.log("  'h' : Human player");
       console.log("  'a' : AI player");
       console.log("Example: 'hha' creates two human players and one AI player.");
-      console.log("Whitespace is ignored.\n");
       continue;
     }
 
     const cleanedInput = input.replace(/\s/g, "");
     if (cleanedInput.length === 0) {
-      console.log(theme.ui.error("Error: Player string cannot be empty."));
+      console.log(theme.ui.error("Error: No players specified and at least one player is required."));
       continue;
     }
 
-    let isValid = true;
-    const tempPlayers: { name: string; isAI: boolean }[] = [];
+    const players: Player[] = [];
     let humanCount = 0;
     let aiCount = 0;
-
+    let invalidCharFound = false;
     for (const char of cleanedInput) {
       if (char === "h") {
         humanCount++;
-        tempPlayers.push({ name: `Human ${humanCount}`, isAI: false });
+        players.push(new Player(`Human ${humanCount}`, "human"));
       } else if (char === "a") {
         aiCount++;
-        tempPlayers.push({ name: `AI ${aiCount}`, isAI: true });
+        players.push(new Player(`AI ${aiCount}`, "ai"));
       } else {
-        isValid = false;
+        invalidCharFound = true;
         break;
       }
     }
 
-    if (!isValid) {
-      console.log(theme.ui.error("Error: Invalid input. Only 'h', 'a', and whitespace are allowed."));
+    if (invalidCharFound) {
+      console.log(theme.ui.error("Error: Invalid input. Only 'h' and 'a' are allowed."));
       continue;
     }
 
     if (humanCount === 1) {
-      const human = tempPlayers.find(p => !p.isAI);
-      if (human) human.name = "Human";
+      const index = players.findIndex(player => player.type === "human")
+      players[index] = players[index]!.withName("Human");
     }
     if (aiCount === 1) {
-      const ai = tempPlayers.find(p => p.isAI);
-      if (ai) ai.name = "AI";
+      const index = players.findIndex(player => player.type === "ai")
+      players[index] = players[index]!.withName("AI");
     }
 
-    playerNames.push(...tempPlayers);
-    break;
+    return players;
+  }
+}
+
+async function main() {
+  const theme = parseAndHandleArgs();
+  const ansis = new Ansis(theme.level);
+  const rl = createReadlineInterface({ input: process.stdin, output: process.stdout, tabSize: 2 });
+  const random = new Random(Math.random());
+  const players = await getPlayers(theme, ansis, rl);
+
+
+  let state: GameState | null = new GameState({
+    players,
+    scorecards: Array.from({ length: players.length }, () => emptyScorecard),
+    currentPlayerIndex: 0,
+    phase: "Rolling",
+    dice: randomDice(random),
+    kept: allFalseKeptFlags,
+    rollsLeft: MAX_ROLLS_LEFT,
+  });
+
+  while (state) {
+    state = mainLoopOnce(state);
   }
 
-  state = reducer(state, { type: "START_GAME", playerNames });
+  process.exit(0);
+}
 
-  while (state.phase !== "GAME_OVER") {
-    const currentPlayer = state.players[state.currentPlayerIndex];
+function mainLoopOnce(state: GameState): GameState | null {
+  switch (state.phase) {
+    case "Rolling":
+      return onRoll(state);
+    case "Scoring":
+      return onScore(state);
+    case "GameOver":
+      onGameOver(state);
+      return null;
+    default:
+      unreachable(state.phase);
+  }
+}
 
-    if (currentPlayer.isAI) {
-      await printGameState(state, theme);
-      while (state.players[state.currentPlayerIndex] === currentPlayer && state.phase !== "GAME_OVER") {
-        const turnNum = Object.values(currentPlayer.scorecard).filter(v => v !== null).length + 1;
-        const rollNum = 3 - state.rollsLeft;
-        if (rollNum === 1) {
-          console.log(`${theme.ui.fg(currentPlayer.name)}, Turn ${turnNum}:`);
-        }
+function onRoll(state: GameState): GameState {
+  switch (state.currentPlayer.type) {
+    case "human":
+      return onRollHuman(state);
+    case "ai":
+      return onRollAI(state);
+    default:
+      unreachable(state.currentPlayer.type);
+  }
+}
 
-        // Draw visual dice
-        const diceRows = ["", "", "", "", ""];
-        state.dice.forEach((d, i) => {
-          const isKept = state.kept[i];
-          const t = isKept ? theme.dice.kept : theme.dice.default;
-          const face = DICE_FACES[d as keyof typeof DICE_FACES];
-          diceRows[0] += t(isKept ? " ╭◜KEEP◝─╮ " : " ╭───────╮ ") + " ";
-          diceRows[1] += t(` │ ${face[0]} │ `) + " ";
-          diceRows[2] += t(` │ ${face[1]} │ `) + " ";
-          diceRows[3] += t(` │ ${face[2]} │ `) + " ";
-          diceRows[4] += t(` ╰───────╯ `) + " ";
-        });
-        diceRows.forEach(row => console.log(row));
-
-        let action = getAIAction(state);
-        while (action.type === "TOGGLE_KEEPER" || action.type === "CLEAR_KEEPERS") {
-          state = reducer(state, action);
-          action = getAIAction(state);
-        }
-
-        if (action.type === "SCORE_CATEGORY") {
-          const points = calculateScore(state.dice, action.category);
-          const rollsUsed = 3 - state.rollsLeft;
-          console.log(`${currentPlayer.name} scored ${theme.ui.italic(theme.ui.bold(`${points} points`))} in ${CATEGORY_ICONS[action.category]} ${theme.ui.italic(theme.ui.bold(CATEGORY_NAMES[action.category]))} after ${rollsUsed} roll${rollsUsed > 1 ? "s" : ""}`);
-        } else if (action.type === "ROLL_DICE") {
-          printRollMessage(state, currentPlayer.name, theme);
-        }
-
-        state = reducer(state, action);
-      }
-    } else {
+function onRollHuman(state: GameState): GameState {
       await printGameState(state, theme);
       const rollNum = 3 - state.rollsLeft;
       
@@ -732,7 +729,7 @@ async function main() {
 
           const points = calculateScore(state.dice, actualCategory);
           const rollsUsed = 3 - state.rollsLeft;
-          console.log(`${currentPlayer.name} scored ${theme.ui.italic(theme.ui.bold(`${points} points`))} in ${CATEGORY_ICONS[actualCategory]} ${theme.ui.italic(theme.ui.bold(CATEGORY_NAMES[actualCategory]))} after ${rollsUsed} roll${rollsUsed > 1 ? "s" : ""}`);
+          console.log(`${currentPlayer.name} scored ${theme.ui.italic(theme.ui.bold(`${points} points`))} in ${iconByCategory[actualCategory]} ${theme.ui.italic(theme.ui.bold(nameByCategory[actualCategory]))} after ${rollsUsed} roll${rollsUsed > 1 ? "s" : ""}`);
 
           state = reducer(state, { type: "SCORE_CATEGORY", category: actualCategory });
           break;
@@ -741,11 +738,53 @@ async function main() {
           continue;
         }
       }
-    }
-  }
+}
 
-  await printGameState(state, theme);
-  process.exit(0);
+function onRollAI(state: GameState): GameState {
+      await printGameState(state, theme);
+      while (state.players[state.currentPlayerIndex] === currentPlayer && state.phase !== "GAME_OVER") {
+        const turnNum = Object.values(currentPlayer.scorecard).filter(v => v !== null).length + 1;
+        const rollNum = 3 - state.rollsLeft;
+        if (rollNum === 1) {
+          console.log(`${theme.ui.fg(currentPlayer.name)}, Turn ${turnNum}:`);
+        }
+
+        // Draw visual dice
+        const diceRows = ["", "", "", "", ""];
+        state.dice.forEach((d, i) => {
+          const isKept = state.kept[i];
+          const t = isKept ? theme.dice.kept : theme.dice.default;
+          const face = DICE_FACES[d as keyof typeof DICE_FACES];
+          diceRows[0] += t(isKept ? " ╭◜KEEP◝─╮ " : " ╭───────╮ ") + " ";
+          diceRows[1] += t(` │ ${face[0]} │ `) + " ";
+          diceRows[2] += t(` │ ${face[1]} │ `) + " ";
+          diceRows[3] += t(` │ ${face[2]} │ `) + " ";
+          diceRows[4] += t(` ╰───────╯ `) + " ";
+        });
+        diceRows.forEach(row => console.log(row));
+
+        let action = getAIAction(state);
+        while (action.type === "TOGGLE_KEEPER" || action.type === "CLEAR_KEEPERS") {
+          state = reducer(state, action);
+          action = getAIAction(state);
+        }
+
+        if (action.type === "SCORE_CATEGORY") {
+          const points = calculateScore(state.dice, action.category);
+          const rollsUsed = 3 - state.rollsLeft;
+          console.log(`${currentPlayer.name} scored ${theme.ui.italic(theme.ui.bold(`${points} points`))} in ${iconByCategory[action.category]} ${theme.ui.italic(theme.ui.bold(nameByCategory[action.category]))} after ${rollsUsed} roll${rollsUsed > 1 ? "s" : ""}`);
+        } else if (action.type === "ROLL_DICE") {
+          printRollMessage(state, currentPlayer.name, theme);
+        }
+
+        state = reducer(state, action);
+      }
+}
+
+function onScore(state: GameState): GameState {
+}
+
+function onGameOver(state: GameState): void {
 }
 
 main();
