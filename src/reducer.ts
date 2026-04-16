@@ -1,14 +1,11 @@
-import type { Action, Category, GameState, Player, Scorecard } from "./types";
+import type { Action, Category, Scorecard, GameDice, GameState, GameDiceKeptFlags, GameDiceIndex } from "./types";
+import { currentPlayerFromGameState, randomGameDice, randomDieValue, cloneGameDiceKeptFlags } from "./types";
 
 export const INITIAL_SCORECARD: Scorecard = {
   ones: null, twos: null, threes: null, fours: null, fives: null, sixes: null,
   threeOfAKind: null, fourOfAKind: null, fullHouse: null,
   smallStraight: null, largeStraight: null, yahtzee: null, chance: null,
 };
-
-function getRandomDice() {
-  return Array.from({ length: 5 }, () => Math.floor(Math.random() * 6) + 1);
-}
 
 export const INITIAL_STATE: GameState = {
   players: [],
@@ -51,20 +48,6 @@ export function calculateScore(dice: number[], category: Category): number {
   }
 }
 
-export function getUpperScore(scorecard: Scorecard): number {
-  const upperCategories: Category[] = ["ones", "twos", "threes", "fours", "fives", "sixes"];
-  return upperCategories.reduce((acc, cat) => acc + (scorecard[cat] || 0), 0);
-}
-
-export function getBonus(scorecard: Scorecard): number {
-  return getUpperScore(scorecard) >= 63 ? 35 : 0;
-}
-
-export function getTotalScore(scorecard: Scorecard): number {
-  const baseScore = (Object.values(scorecard) as (number | null)[]).reduce((acc, v) => acc + (v || 0), 0);
-  return baseScore + getBonus(scorecard);
-}
-
 export function reducer(state: GameState, action: Action): GameState {
   switch (action.type) {
     case "START_GAME":
@@ -77,13 +60,13 @@ export function reducer(state: GameState, action: Action): GameState {
           scorecard: { ...INITIAL_SCORECARD },
         })),
         phase: "ROLLING",
-        dice: getRandomDice(),
+        dice: randomGameDice(),
         rollsLeft: 2, // First roll just happened
       };
 
     case "ROLL_DICE":
       if (state.phase !== "ROLLING" || state.rollsLeft === 0) return state;
-      const newDice = state.dice.map((d, i) => (state.kept[i] ? d : Math.floor(Math.random() * 6) + 1));
+      const newDice = rollDice(state.dice, state.kept);
       const newRollsLeft = state.rollsLeft - 1;
       return {
         ...state,
@@ -94,8 +77,7 @@ export function reducer(state: GameState, action: Action): GameState {
 
     case "TOGGLE_KEEPER":
       if (state.phase !== "ROLLING") return state;
-      const newKept = [...state.kept];
-      newKept[action.index] = !newKept[action.index];
+      const newKept = toggleKept(state.kept, action.index);
       return { ...state, kept: newKept };
 
     case "CLEAR_KEEPERS":
@@ -103,7 +85,7 @@ export function reducer(state: GameState, action: Action): GameState {
 
     case "SCORE_CATEGORY":
       if (state.phase !== "ROLLING" && state.phase !== "SCORING") return state;
-      const player = state.players[state.currentPlayerIndex];
+      const player = currentPlayerFromGameState(state);
       if (player.scorecard[action.category] !== null) return state;
 
       const score = calculateScore(state.dice, action.category);
@@ -114,14 +96,14 @@ export function reducer(state: GameState, action: Action): GameState {
       };
 
       const nextPlayerIndex = (state.currentPlayerIndex + 1) % state.players.length;
-      const isGameOver = nextPlayerIndex === 0 && Object.values(newPlayers[nextPlayerIndex].scorecard).every(v => v !== null);
+      const isGameOver = nextPlayerIndex === 0 && Object.values(newPlayers[nextPlayerIndex]!.scorecard).every(v => v !== null);
 
       return {
         ...state,
         players: newPlayers,
         currentPlayerIndex: isGameOver ? state.currentPlayerIndex : nextPlayerIndex,
         phase: isGameOver ? "GAME_OVER" : "ROLLING",
-        dice: getRandomDice(),
+        dice: randomGameDice(),
         kept: [false, false, false, false, false],
         rollsLeft: 2, // First roll of next turn just happened
       };
@@ -132,4 +114,16 @@ export function reducer(state: GameState, action: Action): GameState {
     default:
       return state;
   }
+}
+
+function rollDice(oldDice: Readonly<GameDice>, kept: Readonly<GameDiceKeptFlags>): GameDice {
+  return oldDice.map(
+    (dieValue, dieIndex) => kept[dieIndex] ? dieValue : randomDieValue()
+  ) as GameDice;
+}
+
+function toggleKept(oldKept: Readonly<GameDiceKeptFlags>, toggleIndex: GameDiceIndex): GameDiceKeptFlags {
+  const newKept = cloneGameDiceKeptFlags(oldKept);
+  newKept[toggleIndex] = !newKept[toggleIndex];
+  return newKept;
 }

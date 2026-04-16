@@ -1,8 +1,8 @@
-import { INITIAL_STATE, reducer, calculateScore, getTotalScore, getUpperScore, getBonus } from "./src/reducer";
+import { INITIAL_STATE, reducer, calculateScore } from "./src/reducer";
 import { getAIAction } from "./src/ai";
 import { parseAndHandleArgs } from "./src/args";
 import type { Theme } from "./src/theme";
-import type { Action, Category, GameState, Player } from "./src/types";
+import { type Action, type Category, type GameState, type Player, totalScoreFromScorecard, upperScoreFromScorecard, bonusScoreFromScorecard } from "./src/types";
 import { CATEGORY_NAMES, CATEGORY_ICONS } from "./src/types";
 import { Ansis } from "ansis";
 import { createInterface as createReadlineInterface, type Interface as ReadlineInterface } from "node:readline/promises";
@@ -37,11 +37,11 @@ const SCORING_COMMANDS: Record<string, Category> = {
 async function printGameState(state: GameState, theme: Theme) {
   if (state.phase === "GAME_OVER") {
     const winner = [...state.players].sort((a, b) => {
-      const scoreA = getTotalScore(a.scorecard);
-      const scoreB = getTotalScore(b.scorecard);
+      const scoreA = totalScoreFromScorecard(a.scorecard);
+      const scoreB = totalScoreFromScorecard(b.scorecard);
       return scoreB - scoreA;
     })[0];
-    const winScore = getTotalScore(winner.scorecard);
+    const winScore = totalScoreFromScorecard(winner.scorecard);
     const info = theme.ui.dim(`${winner.name} wins!`);
     console.log(`\n${theme.ui.header(`≋≋≋≋≋≋≋≋≋≋≋≋ GAME OVER ❯ `)}${theme.ui.header(info)}${theme.ui.header(` ≋≋≋≋≋≋≋≋≋≋≋≋`)}`);
     
@@ -50,14 +50,14 @@ async function printGameState(state: GameState, theme: Theme) {
       const scoreLabelWidth = maxNameLen + 5;
       
       const scoresLines = state.players.map(p => {
-        const total = getTotalScore(p.scorecard);
+        const total = totalScoreFromScorecard(p.scorecard);
         const paddedName = p.name.padEnd(maxNameLen);
         const paddedScore = total.toString().padStart(3);
         return { text: `${paddedName}: ${paddedScore}` };
       });
 
       const rankedPlayers = [...state.players]
-        .map((p, i) => ({ p, score: getTotalScore(p.scorecard) }))
+        .map((p, i) => ({ p, score: totalScoreFromScorecard(p.scorecard) }))
         .sort((a, b) => b.score - a.score);
 
       const rankingsLines = rankedPlayers.map(({ p, score }) => {
@@ -93,7 +93,7 @@ async function printGameState(state: GameState, theme: Theme) {
 
       const scoresLines = state.players.map((p, i) => {
         const isCurrent = i === state.currentPlayerIndex;
-        const total = getTotalScore(p.scorecard);
+        const total = totalScoreFromScorecard(p.scorecard);
         const paddedName = p.name.padEnd(maxNameLen);
         const paddedScore = total.toString().padStart(3);
         return {
@@ -103,7 +103,7 @@ async function printGameState(state: GameState, theme: Theme) {
       });
 
       const rankedPlayers = [...state.players]
-        .map((p, i) => ({ p, originalIndex: i, score: getTotalScore(p.scorecard) }))
+        .map((p, i) => ({ p, originalIndex: i, score: totalScoreFromScorecard(p.scorecard) }))
         .sort((a, b) => b.score - a.score);
 
       const rankingsLines = rankedPlayers.map(({ p, originalIndex, score }) => {
@@ -193,7 +193,7 @@ async function printGameState(state: GameState, theme: Theme) {
       const isCurrent = i === state.currentPlayerIndex;
       const isGameOver = state.phase === "GAME_OVER";
       if (!hasAnyUpper(p)) return " ".repeat(playerColumnWidth);
-      const sum = getUpperScore(p.scorecard);
+      const sum = upperScoreFromScorecard(p.scorecard);
       let display = theme.score.sum(sum.toString());
       if (!isCurrent && !isGameOver) display = theme.ui.dim(display);
       return display + " ".repeat(playerColumnWidth - sum.toString().length);
@@ -203,7 +203,7 @@ async function printGameState(state: GameState, theme: Theme) {
       const isCurrent = i === state.currentPlayerIndex;
       const isGameOver = state.phase === "GAME_OVER";
       if (!hasAnyUpper(p)) return " ".repeat(playerColumnWidth);
-      const bonus = getBonus(p.scorecard);
+      const bonus = bonusScoreFromScorecard(p.scorecard);
       let display = bonus > 0 ? theme.score.value(bonus.toString()) : theme.score.sum(bonus.toString());
       if (!isCurrent && !isGameOver) display = theme.ui.dim(display);
       return display + " ".repeat(playerColumnWidth - bonus.toString().length);
@@ -297,11 +297,11 @@ async function printGameState(state: GameState, theme: Theme) {
 
   if (state.phase === "GAME_OVER") {
     const winner = [...state.players].sort((a, b) => {
-      const scoreA = getTotalScore(a.scorecard);
-      const scoreB = getTotalScore(b.scorecard);
+      const scoreA = totalScoreFromScorecard(a.scorecard);
+      const scoreB = totalScoreFromScorecard(b.scorecard);
       return scoreB - scoreA;
     })[0];
-    const winScore = getTotalScore(winner.scorecard);
+    const winScore = totalScoreFromScorecard(winner.scorecard);
     console.log(theme.ui.current(`Winner: ${winner.name} with ${winScore} pts!`));
   }
 }
