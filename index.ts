@@ -664,7 +664,7 @@ async function main() {
           printRollMessage(state, currentPlayer.name, theme);
           state = reducer(state, { type: "ROLL_DICE" });
           break;
-        } else if (input.startsWith("d") && state.phase === "ROLLING") {
+        } else if (rawInput.startsWith("K") && state.phase === "ROLLING") {
           const content = input.slice(1).replace(/\s/g, "");
           const mapping: Record<string, number> = {
             '1': 0, '2': 1, '3': 2, '4': 3, '5': 4,
@@ -672,7 +672,7 @@ async function main() {
           };
 
           if (content.length === 0) {
-            console.log(theme.ui.error("Error: Please specify dice to discard (e.g., d123 or dasd)."));
+            console.log(theme.ui.error("Error: Please specify dice to discard (e.g., K123 or Kasd)."));
             continue;
           }
 
