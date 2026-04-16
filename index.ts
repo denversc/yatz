@@ -169,9 +169,14 @@ async function printGameState(state: GameState, theme: Theme) {
       }).join("");
     };
 
+    const upperCategories: Category[] = ["ones", "twos", "threes", "fours", "fives", "sixes"];
+    const hasAnyUpper = (p: Player) => upperCategories.some(cat => p.scorecard[cat] !== null);
+    const anyPlayerHasUpper = state.players.some(hasAnyUpper);
+
     const upperSumsDisplay = state.players.map((p, i) => {
       const isCurrent = i === state.currentPlayerIndex;
       const isGameOver = state.phase === "GAME_OVER";
+      if (!hasAnyUpper(p)) return " ".repeat(playerColumnWidth);
       const sum = getUpperScore(p.scorecard);
       let display = theme.score.sum(sum.toString());
       if (!isCurrent && !isGameOver) display = theme.ui.dim(display);
@@ -181,6 +186,7 @@ async function printGameState(state: GameState, theme: Theme) {
     const bonusDisplay = state.players.map((p, i) => {
       const isCurrent = i === state.currentPlayerIndex;
       const isGameOver = state.phase === "GAME_OVER";
+      if (!hasAnyUpper(p)) return " ".repeat(playerColumnWidth);
       const bonus = getBonus(p.scorecard);
       let display = bonus > 0 ? theme.score.value(bonus.toString()) : theme.score.sum(bonus.toString());
       if (!isCurrent && !isGameOver) display = theme.ui.dim(display);
@@ -188,10 +194,11 @@ async function printGameState(state: GameState, theme: Theme) {
     }).join("");
 
     const leftRows: (Category | "sum" | "bonus" | null)[] = [
-      "ones", "twos", "threes", "fours", "fives", "sixes",
-      null,
-      "sum", "bonus"
+      "ones", "twos", "threes", "fours", "fives", "sixes"
     ];
+    if (anyPlayerHasUpper) {
+      leftRows.push(null, "sum", "bonus");
+    }
     const rightRows: (Category | null)[] = [
       "threeOfAKind", "fourOfAKind",
       null,
