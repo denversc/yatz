@@ -542,6 +542,8 @@ async function main() {
             console.log("  k[1-5]  : toggle specified dice and roll (e.g. k125)");
             console.log("  K[1-5]  : keep ONLY specified dice and roll (e.g. K125)");
             console.log("  k[a-g]  : toggle using home row (a=1, s=2, d=3, f=4, g=5)");
+            console.log("  [a-g]   : shortcut for k[a-g] (e.g. asf)");
+            console.log("  [A-G]   : shortcut for K[a-g] (e.g. ASF)");
             console.log("  d[1-5]  : discard specified dice and roll (keeps others)");
           }
           console.log("  [cat]   : score in category (e.g. 1, fh, yahtzee)");
@@ -637,6 +639,27 @@ async function main() {
             state = reducer(state, { type: "TOGGLE_KEEPER", index: mapping[char] });
           }
 
+          printRollMessage(state, currentPlayer.name, theme);
+          state = reducer(state, { type: "ROLL_DICE" });
+          break;
+        } else if (/^[asdfg]+$/.test(rawInput) && state.phase === "ROLLING") {
+          const mapping: Record<string, number> = {
+            'a': 0, 's': 1, 'd': 2, 'f': 3, 'g': 4
+          };
+          for (const char of rawInput) {
+            state = reducer(state, { type: "TOGGLE_KEEPER", index: mapping[char] });
+          }
+          printRollMessage(state, currentPlayer.name, theme);
+          state = reducer(state, { type: "ROLL_DICE" });
+          break;
+        } else if (/^[ASDFG]+$/.test(rawInput) && state.phase === "ROLLING") {
+          const mapping: Record<string, number> = {
+            'A': 0, 'S': 1, 'D': 2, 'F': 3, 'G': 4
+          };
+          state = reducer(state, { type: "CLEAR_KEEPERS" });
+          for (const char of rawInput) {
+            state = reducer(state, { type: "TOGGLE_KEEPER", index: mapping[char] });
+          }
           printRollMessage(state, currentPlayer.name, theme);
           state = reducer(state, { type: "ROLL_DICE" });
           break;
