@@ -18,6 +18,22 @@ const DICE_FACES = {
   6: ["●   ●", "●   ●", "●   ●"],
 } as const;
 
+const SCORING_COMMANDS: Record<string, Category> = {
+  "1": "ones", "on": "ones", "one": "ones", "ones": "ones",
+  "2": "twos", "tw": "twos", "two": "twos", "twos": "twos",
+  "3": "threes", "th": "threes", "thr": "threes", "thre": "threes", "three": "threes", "threes": "threes",
+  "4": "fours", "fo": "fours", "fou": "fours", "four": "fours", "fours": "fours",
+  "5": "fives", "fi": "fives", "fiv": "fives", "five": "fives", "fives": "fives",
+  "6": "sixes", "si": "sixes", "six": "sixes", "sixe": "sixes", "sixes": "sixes",
+  "3k": "threeOfAKind", "tk": "threeOfAKind",
+  "4k": "fourOfAKind", "fk": "fourOfAKind",
+  "fh": "fullHouse", "fu": "fullHouse", "ful": "fullHouse", "full": "fullHouse",
+  "sm": "smallStraight", "sma": "smallStraight", "smal": "smallStraight", "small": "smallStraight",
+  "lg": "largeStraight", "la": "largeStraight", "lar": "largeStraight", "larg": "largeStraight", "large": "largeStraight",
+  "ya": "yahtzee", "yah": "yahtzee", "yaht": "yahtzee", "yahtz": "yahtzee", "yahtzee": "yahtzee",
+  "ch": "chance", "cha": "chance", "chan": "chance", "chanc": "chance", "chance": "chance",
+};
+
 async function printGameState(state: GameState, theme: Theme) {
   if (state.phase === "GAME_OVER") {
     const winner = [...state.players].sort((a, b) => {
@@ -521,19 +537,15 @@ async function main() {
         if (input === "?") {
           console.log(`\n${theme.ui.header("Commands:")}`);
           if (state.phase === "ROLLING") {
-            console.log("  a       : roll all (clears keepers)");
+            console.log("  rr      : roll all (clears keepers)");
             console.log("  r, ENTER: roll (keeps current keepers)");
             console.log("  k[1-5]  : toggle specified dice and roll (e.g. k125)");
             console.log("  K[1-5]  : keep ONLY specified dice and roll (e.g. K125)");
             console.log("  k[a-g]  : toggle using home row (a=1, s=2, d=3, f=4, g=5)");
             console.log("  d[1-5]  : discard specified dice and roll (keeps others)");
-            console.log("  s[cat]  : score in category (e.g. sfh, s 1)");
-            console.log("            Shortcuts: 1-6, 3k, 4k, fh, ss, ls, y, c");
-          } else {
-            console.log("  [cat]   : score in category (e.g. fh, 1)");
-            console.log("            Shortcuts: 1-6, 3k, 4k, fh, ss, ls, y, c");
-            console.log("  s[cat]  : same as above");
           }
+          console.log("  [cat]   : score in category (e.g. 1, fh, yahtzee)");
+          console.log("            Shortcuts: 1-6, 3k, 4k, fh, sm, lg, ya, ch");
           console.log("  q       : quit (with confirmation)");
           console.log("  q!      : quit immediately");
           console.log("");
@@ -552,7 +564,7 @@ async function main() {
           process.exit(0);
         }
 
-        if (input === "a" && state.phase === "ROLLING") {
+        if (input === "rr" && state.phase === "ROLLING") {
           state = reducer(state, { type: "CLEAR_KEEPERS" });
           printRollMessage(state, currentPlayer.name, theme);
           state = reducer(state, { type: "ROLL_DICE" });
@@ -665,22 +677,8 @@ async function main() {
           printRollMessage(state, currentPlayer.name, theme);
           state = reducer(state, { type: "ROLL_DICE" });
           break;
-        } else if (input.startsWith("s") || (state.phase === "SCORING" && input !== "")) {
-          const shortcuts: Record<string, Category> = {
-            "1": "ones", "2": "twos", "3": "threes", "4": "fours", "5": "fives", "6": "sixes",
-            "3k": "threeOfAKind", "4k": "fourOfAKind", "fh": "fullHouse",
-            "ss": "smallStraight", "ls": "largeStraight", "y": "yahtzee", "c": "chance"
-          };
-
-          let rawInput = input;
-          if (input.startsWith("s") && input.length > 1) {
-            const afterS = input.slice(1).replace(/\s/g, "");
-            if (shortcuts[afterS] || (Object.keys(currentPlayer.scorecard) as Category[]).some(c => c.toLowerCase() === afterS)) {
-              rawInput = afterS;
-            }
-          }
-          
-          const categoryInput = (shortcuts[rawInput] || rawInput).toLowerCase();
+        } else if (SCORING_COMMANDS[input] || (state.phase === "SCORING" && input !== "")) {
+          const categoryInput = (SCORING_COMMANDS[input] || input).toLowerCase();
 
           const actualCategory = (Object.keys(currentPlayer.scorecard) as Category[]).find(
             cat => cat.toLowerCase() === categoryInput
