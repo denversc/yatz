@@ -55,7 +55,7 @@ export function createTheme(level?: number): Theme {
   return {
     level: a.level,
     ui: {
-      bg: a.bg(COLORS.bg),
+      bg: a.bgHex(COLORS.bg),
       fg: a.hex(COLORS.fg),
       header: a.hex(COLORS.magenta).bold,
       current: a.hex(COLORS.blue).bold,
